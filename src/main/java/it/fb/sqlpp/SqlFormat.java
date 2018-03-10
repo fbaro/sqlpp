@@ -5,12 +5,7 @@ import java.util.List;
 public class SqlFormat {
 
     public static String format(Tree tree, int lineWidth, int indentSize) {
-        int fullLen = tree.depthFirstVisit()
-                .mapToInt(n -> n.text == null ? 0 : n.text.length() + 1)
-                .sum() - 1;
-        if (fullLen > lineWidth) {
-            tree.data.splitChildren = true;
-        }
+        new TreeSplit(lineWidth, indentSize).accept(tree, 0, 0);
         TreePrint pc = new TreePrint(getIndentString(indentSize));
         pc.accept(tree, 0);
         return pc.result.toString();
@@ -23,6 +18,39 @@ public class SqlFormat {
             indentSize--;
         }
         return sb.toString();
+    }
+
+    private static final class TreeSplit {
+
+        private final int lineWidth;
+        private final int indentSize;
+
+        public TreeSplit(int lineWidth, int indentSize) {
+            this.lineWidth = lineWidth;
+            this.indentSize = indentSize;
+        }
+
+        private void accept(Tree tree, int indentLevel, int curPosInRow) {
+            if (tree.isLeaf()) {
+                return;
+            }
+            int subtreeLen = tree.depthFirstVisit()
+                    .mapToInt(n -> n.text == null ? 0 : n.text.length() + 1)
+                    .sum() - 1;
+            int rowLen = curPosInRow + subtreeLen;
+            if (curPosInRow > indentLevel * indentSize) {
+                rowLen++; // Aggiungo uno spazio
+            }
+            if (rowLen <= lineWidth) {
+                return;
+            }
+            tree.data.splitChildren = true;
+            List<Tree> children = tree.children;
+            accept(children.get(0), indentLevel + 1, curPosInRow);
+            for (int c = 1; c < children.size(); c++) {
+                accept(children.get(c), indentLevel + 1, (indentLevel + 1) * indentSize);
+            }
+        }
     }
 
     private static final class TreePrint {
@@ -38,20 +66,19 @@ public class SqlFormat {
                 result.append(tree.text);
             } else {
                 List<Tree> children = tree.children;
-                for (int c = 0; c < children.size(); c++) {
+                for (int c = 0; c < children.size() - 1; c++) {
                     Tree child = children.get(c);
-                    accept(child, indentLevel);
-                    if (c != children.size() - 1) {
-                        if (tree.data.splitChildren) {
-                            result.append('\n');
-                            for (int i = 0; i < indentLevel + 1; i++) {
-                                result.append(indentString);
-                            }
-                        } else {
-                            result.append(' ');
+                    accept(child, indentLevel + (tree.data.splitChildren ? 1 : 0));
+                    if (tree.data.splitChildren) {
+                        result.append('\n');
+                        for (int i = 0; i < indentLevel + 1; i++) {
+                            result.append(indentString);
                         }
+                    } else {
+                        result.append(' ');
                     }
                 }
+                accept(children.get(children.size() - 1), indentLevel + (tree.data.splitChildren ? 1 : 0));
             }
         }
     }
