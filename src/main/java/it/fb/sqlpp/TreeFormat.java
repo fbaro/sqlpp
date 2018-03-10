@@ -2,7 +2,7 @@ package it.fb.sqlpp;
 
 import java.util.List;
 
-public class SqlFormat {
+public class TreeFormat {
 
     public static String format(Tree tree, int lineWidth, int indentSize) {
         new TreeSplit(lineWidth, indentSize).accept(tree, 0, 0);
@@ -25,7 +25,7 @@ public class SqlFormat {
         private final int lineWidth;
         private final int indentSize;
 
-        public TreeSplit(int lineWidth, int indentSize) {
+        TreeSplit(int lineWidth, int indentSize) {
             this.lineWidth = lineWidth;
             this.indentSize = indentSize;
         }
@@ -63,22 +63,25 @@ public class SqlFormat {
 
         private void accept(Tree tree, int indentLevel) {
             if (tree.isLeaf()) {
+                if (result.length() > 0 && result.charAt(result.length() - 1) == '\n') {
+                    for (int i = 0; i < indentLevel; i++) {
+                        result.append(indentString);
+                    }
+                }
                 result.append(tree.text);
             } else {
+                int recursiveIndentLevel = indentLevel + (tree.data.splitChildren ? 1 : 0);
                 List<Tree> children = tree.children;
                 for (int c = 0; c < children.size() - 1; c++) {
                     Tree child = children.get(c);
-                    accept(child, indentLevel + (tree.data.splitChildren ? 1 : 0));
+                    accept(child, recursiveIndentLevel);
                     if (tree.data.splitChildren) {
                         result.append('\n');
-                        for (int i = 0; i < indentLevel + 1; i++) {
-                            result.append(indentString);
-                        }
                     } else {
                         result.append(' ');
                     }
                 }
-                accept(children.get(children.size() - 1), indentLevel + (tree.data.splitChildren ? 1 : 0));
+                accept(children.get(children.size() - 1), recursiveIndentLevel);
             }
         }
     }

@@ -1,15 +1,16 @@
 package it.fb.sqlpp;
 
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 final class Tree {
 
-    public final String text;
-    public Tree parent;
-    public final List<Tree> children = new ArrayList<>();
-    public final FormatStatus data = new FormatStatus();
+    final String text;
+    Tree parent;
+    final List<Tree> children = new ArrayList<>();
+    final FormatStatus data = new FormatStatus();
 
     private Tree(String text, Tree parent) {
         this.text = text;
@@ -70,6 +71,14 @@ final class Tree {
         return StreamSupport.stream(((Iterable<Tree>) this::depthFirstPreVisit).spliterator(), false);
     }
 
+    @Override
+    public String toString() {
+        return depthFirstVisit()
+                .map(Tree::getText)
+                .filter(Objects::nonNull)
+                .collect(Collectors.joining(" "));
+    }
+
     private Iterator<Tree> depthFirstPreVisit() {
         Stack<Tree> toVisit = new Stack<>();
         toVisit.add(this);
@@ -96,15 +105,9 @@ final class Tree {
         return root;
     }
 
-    static Tree subtree(Tree child1, Tree child2) {
+    static Tree subtree(Tree... children) {
         Tree root = new Tree(null, null);
-        Arrays.asList(child1, child2).forEach(root::add);
-        return root;
-    }
-
-    static Tree subtree(Tree child1, Tree child2, Tree child3) {
-        Tree root = new Tree(null, null);
-        Arrays.asList(child1, child2, child3).forEach(root::add);
+        Arrays.asList(children).forEach(root::add);
         return root;
     }
 
