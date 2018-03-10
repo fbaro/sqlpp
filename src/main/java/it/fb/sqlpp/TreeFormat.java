@@ -2,7 +2,9 @@ package it.fb.sqlpp;
 
 import java.util.List;
 
-public class TreeFormat {
+public final class TreeFormat {
+    private TreeFormat() {
+    }
 
     public static String format(Tree tree, int lineWidth, int indentSize) {
         new TreeSplit(lineWidth, indentSize).accept(tree, 0, 0);

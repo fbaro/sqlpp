@@ -73,10 +73,26 @@ final class Tree {
 
     @Override
     public String toString() {
-        return depthFirstVisit()
-                .map(Tree::getText)
-                .filter(Objects::nonNull)
-                .collect(Collectors.joining(" "));
+        if (text != null) {
+            return text;
+        }
+        return "(" + children.stream()
+                .map(Tree::toString)
+                .collect(Collectors.joining(" ")) + ")";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Tree tree = (Tree) o;
+        return Objects.equals(text, tree.text) &&
+                Objects.equals(children, tree.children);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(text, children);
     }
 
     private Iterator<Tree> depthFirstPreVisit() {
@@ -111,10 +127,14 @@ final class Tree {
         return root;
     }
 
+    static Tree subtree(Iterable<? extends Tree> children) {
+        Tree root = new Tree(null, null);
+        children.forEach(root::add);
+        return root;
+    }
+
     static Tree leaf(String text) {
         return new Tree(text, null);
     }
 
 }
-
-
