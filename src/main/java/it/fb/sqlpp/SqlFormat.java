@@ -66,7 +66,7 @@ public final class SqlFormat {
         }
 
         @Override
-        protected Tree visitExpression(Expression node, Void context) {
+        protected Tree visitLiteral(Literal node, Void context) {
             return leaf(ExpressionFormatter.formatExpression(node, Optional.empty()));
         }
 
@@ -80,12 +80,62 @@ public final class SqlFormat {
         }
 
         @Override
+        protected Tree visitArithmeticBinary(ArithmeticBinaryExpression node, Void context) {
+            return subtree(
+                    process(node.getLeft()),
+                    subtree(
+                            leaf(node.getType().getValue()),
+                            process(node.getRight())));
+        }
+
+        @Override
+        protected Tree visitIsNullPredicate(IsNullPredicate node, Void context) {
+            return subtree(process(node.getValue()), leaf("IS NULL"));
+        }
+
+        @Override
+        protected Tree visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
+            return subtree(process(node.getValue()), leaf("IS NOT NULL"));
+        }
+
+        @Override
+        protected Tree visitBetweenPredicate(BetweenPredicate node, Void context) {
+            return subtree(process(node.getValue()), leaf("BETWEEN"), process(node.getMin()), leaf("AND"), process(node.getMax()));
+        }
+
+        @Override
+        protected Tree visitExists(ExistsPredicate node, Void context) {
+            return subtree(leaf("EXISTS"), leaf("("), process(node.getSubquery()), leaf(")"));
+        }
+
+        @Override
+        protected Tree visitSubqueryExpression(SubqueryExpression node, Void context) {
+            return subtree(leaf("("), process(node.getQuery()), leaf(")"));
+        }
+
+        @Override
+        protected Tree visitLogicalBinaryExpression(LogicalBinaryExpression node, Void context) {
+            return subtree(process(node.getLeft()), subtree(leaf(node.getType().name()), process(node.getRight())));
+        }
+
+        @Override
+        protected Tree visitIdentifier(Identifier node, Void context) {
+            return leaf(node.getValue());
+        }
+
+        @Override
+        protected Tree visitAliasedRelation(AliasedRelation node, Void context) {
+            return subtree(process(node.getRelation()), process(node.getAlias()));
+        }
+
+        @Override
         protected Tree visitTable(Table node, Void context) {
             return leaf(Joiner.on('.').join(node.getName().getOriginalParts()));
         }
 
         @Override
         protected Tree visitQuery(Query node, Void context) {
+            // TODO
             return process(node.getQueryBody());
         }
 
