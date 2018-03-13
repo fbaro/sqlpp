@@ -46,11 +46,15 @@ public final class TreeFormat {
             if (rowLen <= lineWidth) {
                 return;
             }
-            tree.data.splitChildren = true;
             List<Tree> children = tree.children;
-            accept(children.get(0), indentLevel + 1, curPosInRow);
+            if (children.get(0).isLeaf() && children.get(0).text.equals(",")) { // TODO: make more general
+            } else {
+                indentLevel++;
+                tree.data.splitChildren = true;
+            }
+            accept(children.get(0), indentLevel, curPosInRow);
             for (int c = 1; c < children.size(); c++) {
-                accept(children.get(c), indentLevel + 1, (indentLevel + 1) * indentSize);
+                accept(children.get(c), indentLevel, indentLevel * indentSize);
             }
         }
     }
@@ -66,6 +70,9 @@ public final class TreeFormat {
         private void accept(Tree tree, int indentLevel) {
             if (tree.isLeaf()) {
                 if (result.length() > 0 && result.charAt(result.length() - 1) == '\n') {
+                    if (tree.isFirstChild() && tree.parent.data.splitChildren) {
+                        indentLevel--;
+                    }
                     for (int i = 0; i < indentLevel; i++) {
                         result.append(indentString);
                     }

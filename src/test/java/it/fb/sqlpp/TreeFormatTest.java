@@ -36,12 +36,6 @@ public class TreeFormatTest extends Trees {
                 TreeFormat.format(simpleExpr3, 40, 2));
     }
 
-    @Test
-    public void verifyFormattingForShortStringAndShortLine30() {
-        assertEquals("SELECT\n    COL1 , COL2 , COL3 , COL4\n  FROM TBL",
-                TreeFormat.format(simpleExpr3, 30, 2));
-    }
-
     /**
      * <pre>
      * SELECT COL1 , COL2 , COL3 , COL4 FROM TBL
@@ -63,7 +57,7 @@ public class TreeFormatTest extends Trees {
      */
     @Test
     public void verifyFormattingForShortStringAndShortLine20() {
-        assertEquals("SELECT\n      COL1\n      , COL2\n      , COL3\n      , COL4\n  FROM TBL",
+        assertEquals("SELECT\n    COL1\n    , COL2\n    , COL3\n    , COL4\n  FROM TBL",
                 TreeFormat.format(simpleExpr3, 20, 2));
     }
 }

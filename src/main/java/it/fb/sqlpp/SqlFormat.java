@@ -133,6 +133,45 @@ public final class SqlFormat {
             return leaf(Joiner.on('.').join(node.getName().getOriginalParts()));
         }
 
+        private String toString(Join.Type joinType) {
+            switch (joinType) {
+                case CROSS:
+                case INNER:
+                case LEFT:
+                case RIGHT:
+                    return joinType.name() + " JOIN";
+                default:
+                    throw new UnsupportedOperationException("TODO: Other join types");
+            }
+        }
+
+        @Override
+        protected Tree visitJoin(Join node, Void context) {
+            if (!node.getCriteria().isPresent()) {
+                return subtree(
+                        process(node.getLeft()),
+                        subtree(
+                                leaf(toString(node.getType())),
+                                process(node.getRight())
+                        ));
+            } else if (node.getCriteria().get() instanceof JoinOn) {
+                return subtree(
+                        process(node.getLeft()),
+                        subtree(
+                                subtree(
+                                        leaf(toString(node.getType())),
+                                        process(node.getRight())
+                                ),
+                                subtree(
+                                        leaf("ON"),
+                                        process(((JoinOn) node.getCriteria().get()).getExpression())
+                                )
+                        ));
+            } else {
+                throw new UnsupportedOperationException("TODO join" + node.getCriteria().get());
+            }
+        }
+
         @Override
         protected Tree visitQuery(Query node, Void context) {
             // TODO
@@ -141,12 +180,10 @@ public final class SqlFormat {
 
         @Override
         protected Tree visitQuerySpecification(QuerySpecification node, Void context) {
-            Tree select = subtree(
-                    leaf("SELECT"),
-                    process(node.getSelect()));
+            Tree select = addOlderSibling("SELECT", process(node.getSelect()));
             ImmutableList<Tree> from = node.getFrom()
                     .map(this::process)
-                    .map(t -> subtree(leaf("FROM"), t))
+                    .map(t -> addOlderSibling("FROM", t))
                     .map(ImmutableList::of)
                     .orElse(ImmutableList.of());
             ImmutableList<Tree> where = node.getWhere()
@@ -172,6 +209,15 @@ public final class SqlFormat {
             return Tree.<Tree>subtree(Iterables.concat(
                     ImmutableList.of(select),
                     from, where, groupBy, having, orderBy));
+        }
+    }
+
+    private static Tree addOlderSibling(String text, Tree subtree) {
+        Tree newNode = leaf(text);
+        if (subtree.isLeaf()) {
+            return subtree(newNode, subtree);
+        } else {
+            return subtree.add(0, newNode);
         }
     }
 }

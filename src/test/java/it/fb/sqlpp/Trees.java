@@ -47,11 +47,10 @@ public class Trees {
                 subtree(
                         subtree(
                                 leaf("SELECT"),
-                                subtree(
-                                        leaf("COL1"),
-                                        subtree(",", "COL2"),
-                                        subtree(",", "COL3"),
-                                        subtree(",", "COL4"))),
+                                leaf("COL1"),
+                                subtree(",", "COL2"),
+                                subtree(",", "COL3"),
+                                subtree(",", "COL4")),
                         subtree(
                                 leaf("FROM"),
                                 leaf("TBL")));

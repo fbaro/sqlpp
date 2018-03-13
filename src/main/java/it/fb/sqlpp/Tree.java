@@ -54,7 +54,16 @@ final class Tree {
         return this;
     }
 
-    private Tree add(Tree child) {
+    public Tree add(int position, Tree child) {
+        if (this.text != null) {
+            throw new IllegalArgumentException("Inner nodes cannot have text");
+        }
+        child.parent = this;
+        this.children.add(position, child);
+        return this;
+    }
+
+    public Tree add(Tree child) {
         if (this.text != null) {
             throw new IllegalArgumentException("Inner nodes cannot have text");
         }
