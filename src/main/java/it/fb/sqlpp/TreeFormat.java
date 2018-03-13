@@ -47,8 +47,7 @@ public final class TreeFormat {
                 return;
             }
             List<Tree> children = tree.children;
-            if (children.get(0).isLeaf() && children.get(0).text.equals(",")) { // TODO: make more general
-            } else {
+            if (tree.splittable) {
                 indentLevel++;
                 tree.data.splitChildren = true;
             }

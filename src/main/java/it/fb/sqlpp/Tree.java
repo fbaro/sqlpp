@@ -10,11 +10,13 @@ final class Tree {
     final String text;
     Tree parent;
     final List<Tree> children = new ArrayList<>();
+    final boolean splittable;
     final FormatStatus data = new FormatStatus();
 
-    private Tree(String text, Tree parent) {
+    private Tree(String text, Tree parent, boolean splittable) {
         this.text = text;
         this.parent = parent;
+        this.splittable = splittable;
     }
 
     public FormatStatus getData() {
@@ -35,23 +37,6 @@ final class Tree {
 
     public boolean isFirstChild() {
         return parent == null || parent.children.get(0) == this;
-    }
-
-    public static Tree root(String text) {
-        return new Tree(text, null);
-    }
-
-    public static Tree root() {
-        return new Tree(null, null);
-    }
-
-    private Tree add(String text) {
-        if (this.text != null) {
-            throw new IllegalArgumentException("Inner nodes cannot have text");
-        }
-        Tree ret = new Tree(text, this);
-        children.add(ret);
-        return this;
     }
 
     public Tree add(int position, Tree child) {
@@ -125,25 +110,40 @@ final class Tree {
     }
 
     static Tree subtree(String... children) {
-        Tree root = new Tree(null, null);
-        Arrays.asList(children).forEach(root::add);
-        return root;
+        return subtree(true, children);
+    }
+
+    static Tree subtree(boolean splittable, String... children) {
+        return subtree(splittable, Arrays.stream(children).map(Tree::leaf));
     }
 
     static Tree subtree(Tree... children) {
-        Tree root = new Tree(null, null);
-        Arrays.asList(children).forEach(root::add);
-        return root;
+        return subtree(true, children);
+    }
+
+    static Tree solidSubtree(Tree... children) {
+        return subtree(false, children);
+    }
+
+    static Tree subtree(boolean splittable, Tree... children) {
+        return subtree(splittable, Arrays.stream(children));
     }
 
     static Tree subtree(Iterable<? extends Tree> children) {
-        Tree root = new Tree(null, null);
+        return subtree(true, children);
+    }
+
+    static Tree subtree(boolean splittable, Iterable<? extends Tree> children) {
+        return subtree(splittable, StreamSupport.stream(children.spliterator(), false));
+    }
+
+    static Tree subtree(boolean splittable, Stream<? extends Tree> children) {
+        Tree root = new Tree(null, null, splittable);
         children.forEach(root::add);
         return root;
     }
 
     static Tree leaf(String text) {
-        return new Tree(text, null);
+        return new Tree(text, null, true);
     }
-
 }

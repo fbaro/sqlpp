@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static it.fb.sqlpp.Tree.leaf;
+import static it.fb.sqlpp.Tree.solidSubtree;
 import static it.fb.sqlpp.Tree.subtree;
 
 public final class SqlFormat {
@@ -41,7 +42,7 @@ public final class SqlFormat {
                     .stream()
                     .skip(1)
                     .map(this::process)
-                    .map(t -> subtree(leaf(","), t))
+                    .map(t -> solidSubtree(leaf(","), t))
                     .collect(Collectors.toList());
             return otherChildren.isEmpty() ? firstChild :
                     subtree(Iterables.concat(ImmutableList.of(firstChild), otherChildren));
@@ -150,7 +151,7 @@ public final class SqlFormat {
             if (!node.getCriteria().isPresent()) {
                 return subtree(
                         process(node.getLeft()),
-                        subtree(
+                        solidSubtree(
                                 leaf(toString(node.getType())),
                                 process(node.getRight())
                         ));
@@ -158,7 +159,7 @@ public final class SqlFormat {
                 return subtree(
                         process(node.getLeft()),
                         subtree(
-                                subtree(
+                                solidSubtree(
                                         leaf(toString(node.getType())),
                                         process(node.getRight())
                                 ),
