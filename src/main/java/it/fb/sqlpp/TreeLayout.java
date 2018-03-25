@@ -6,29 +6,37 @@ public final class TreeLayout {
 
     public static String format(int lineWidth, int indentWidth, TreeCode formatCode) {
         TreeLayout tl = new TreeLayout(lineWidth, indentWidth);
-        tl.format(formatCode);
+        try {
+            tl.format(formatCode);
+        } catch (ReformatException e) {
+            throw new IllegalStateException("Unformattable!");
+        }
         return tl.sb.toString();
     }
 
     private final int rowWidth;
     private final int indentWidth;
     private final StringBuilder sb = new StringBuilder();
+    private int curLineStartsAt = 0;
 
     private TreeLayout(int rowWidth, int indentWidth) {
         this.rowWidth = rowWidth;
         this.indentWidth = indentWidth;
     }
 
-    private void format(TreeCode formatCode) {
+    private void format(TreeCode formatCode) throws ReformatException {
+        int curLen = sb.length();
         try {
             formatCode.accept(new StraightLayout());
         } catch (ReformatException ex) {
-            try {
-                formatCode.accept(new IndentingLayout());
-            } catch (ReformatException e) {
-                throw new IllegalStateException("Unable to reformat");
-            }
+            sb.setLength(curLen);
+            formatCode.accept(new IndentingLayout());
         }
+    }
+
+    private void newLine() {
+        sb.append('\n');
+        curLineStartsAt = sb.length();
     }
 
     public interface TreeCode {
@@ -48,41 +56,73 @@ public final class TreeLayout {
         }
     }
 
-    private final class StraightLayout implements NodeCode {
+    private class StraightLayout implements NodeCode {
         public StraightLayout() {
+        }
+
+        private void append(String text, boolean addSpace) throws ReformatException {
+            if (Strings.isNullOrEmpty(text)) {
+                return;
+            }
+            int curLen = sb.length();
+            addSpace &= curLen > curLineStartsAt;
+            int newLen = curLen + text.length() + (addSpace ? 1 : 0);
+            if (newLen - curLineStartsAt > rowWidth) {
+                throw ReformatException.INSTANCE;
+            }
+            if (addSpace) {
+                sb.append(' ');
+            }
+            sb.append(text);
         }
 
         @Override
         public void leaf(String text) throws ReformatException {
-            if (text != null && !text.isEmpty()) {
-                if (sb.length() > 0) {
-                    sb.append(' ');
-                }
-                sb.append(text);
-            }
+            append(text, true);
         }
 
         @Override
         public NodeCode child(String preLabel, String postLabel, TreeCode code) throws ReformatException {
-            leaf(preLabel);
+            append(preLabel, true);
             code.accept(this);
-            if (!Strings.isNullOrEmpty(postLabel)) {
-                sb.append(postLabel);
-            }
+            append(postLabel, false);
             return this;
         }
     }
 
-    private class IndentingLayout implements NodeCode {
+    private final class IndentingLayout extends StraightLayout {
+
+        private int callCount = 0;
+
+        private void append(String text, boolean addSpace) {
+            if (Strings.isNullOrEmpty(text)) {
+                return;
+            }
+            int curLen = sb.length();
+            addSpace &= curLen > curLineStartsAt;
+            if (addSpace) {
+                sb.append(' ');
+            }
+            sb.append(text);
+        }
 
         @Override
-        public void leaf(String text) throws ReformatException {
-
+        public void leaf(String text) {
+            if (++callCount > 1) {
+                newLine();
+            }
+            append(text, true);
         }
 
         @Override
         public NodeCode child(String preLabel, String postLabel, TreeCode code) throws ReformatException {
-            return null;
+            if (++callCount > 1) {
+                newLine();
+            }
+            append(preLabel, true);
+            format(code);
+            append(postLabel, false);
+            return this;
         }
     }
 }

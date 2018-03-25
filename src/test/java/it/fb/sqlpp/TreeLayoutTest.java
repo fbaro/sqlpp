@@ -29,8 +29,7 @@ public class TreeLayoutTest {
     }
 
     @Test
-    @Ignore
     public void testSimpleSelect_W20() {
-        assertEquals("SELECT A, B\nFROM TABLE", TreeLayout.format(80, 2, simpleTreeCode));
+        assertEquals("SELECT A, B\nFROM TABLE", TreeLayout.format(20, 2, simpleTreeCode));
     }
 }
