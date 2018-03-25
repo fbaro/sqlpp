@@ -3,13 +3,15 @@ package it.fb.sqlpp;
 import com.facebook.presto.sql.ExpressionFormatter;
 import com.facebook.presto.sql.tree.*;
 import com.google.common.base.Joiner;
+import com.google.common.collect.Iterators;
 import it.fb.sqlpp.TreeLayout.NodeCode;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-public final class StatementLayout extends DefaultTraversalVisitor<Object, NodeCode> {
+public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, NodeCode> {
 
     public static String format(int lineWidth, int indentWidth, Statement statement) {
         StatementLayout sl = new StatementLayout();
@@ -24,92 +26,110 @@ public final class StatementLayout extends DefaultTraversalVisitor<Object, NodeC
     }
 
     @Override
-    protected Object visitIdentifier(Identifier node, NodeCode context) {
+    protected NodeCode visitIdentifier(Identifier node, NodeCode context) {
         return context.leaf(node.getValue());
     }
 
     @Override
-    protected Object visitSymbolReference(SymbolReference node, NodeCode context) {
+    protected NodeCode visitSymbolReference(SymbolReference node, NodeCode context) {
         return context.leaf(node.getName());
     }
 
     @Override
-    protected Object visitLiteral(Literal node, NodeCode context) {
+    protected NodeCode visitLiteral(Literal node, NodeCode context) {
         return context.leaf(ExpressionFormatter.formatExpression(node, Optional.empty()));
     }
 
     @Override
-    protected Object visitComparisonExpression(ComparisonExpression node, NodeCode context) {
+    protected NodeCode visitComparisonExpression(ComparisonExpression node, NodeCode context) {
         return context.child("", "", toTree(node.getLeft()))
                 .child(node.getType().getValue(), "", toTree(node.getRight()));
     }
 
     @Override
-    protected Object visitArithmeticBinary(ArithmeticBinaryExpression node, NodeCode context) {
+    protected NodeCode visitArithmeticBinary(ArithmeticBinaryExpression node, NodeCode context) {
         return context.child("", "", toTree(node.getLeft()))
                 .child(node.getType().getValue(), "", toTree(node.getRight()));
     }
 
     @Override
-    protected Object visitIsNullPredicate(IsNullPredicate node, NodeCode context) {
+    protected NodeCode visitIsNullPredicate(IsNullPredicate node, NodeCode context) {
         return context.child("", "IS NULL", toTree(node.getValue()));
     }
 
     @Override
-    protected Object visitIsNotNullPredicate(IsNotNullPredicate node, NodeCode context) {
+    protected NodeCode visitIsNotNullPredicate(IsNotNullPredicate node, NodeCode context) {
         return context.child("", "IS NOT NULL", toTree(node.getValue()));
     }
 
     @Override
-    protected Object visitBetweenPredicate(BetweenPredicate node, NodeCode context) {
+    protected NodeCode visitBetweenPredicate(BetweenPredicate node, NodeCode context) {
         return context.child("", "", toTree(node.getValue()))
                 .child("BETWEEN", "", toTree(node.getMin()))
                 .child("AND", "", toTree(node.getMax()));
     }
 
     @Override
-    protected Object visitExists(ExistsPredicate node, NodeCode context) {
+    protected NodeCode visitExists(ExistsPredicate node, NodeCode context) {
         return context.child("EXISTS (", ")", toTree(node.getSubquery()));
     }
 
     @Override
-    protected Object visitSubqueryExpression(SubqueryExpression node, NodeCode context) {
+    protected NodeCode visitSubqueryExpression(SubqueryExpression node, NodeCode context) {
         return context.child("(", ")", toTree(node.getQuery()));
     }
 
     @Override
-    protected Object visitLogicalBinaryExpression(LogicalBinaryExpression node, NodeCode context) {
-        return context.child("", "", toTree(node.getLeft()))
-                .child(node.getType().name(), "", toTree(node.getRight()));
+    protected NodeCode visitLogicalBinaryExpression(LogicalBinaryExpression node, NodeCode context) {
+        Iterator<? extends Expression> merged = mergeBinaryExpressions(node);
+        context.child("", "", toTree(merged.next()));
+        while (merged.hasNext()) {
+            context.child(node.getType().name(), "", toTree(merged.next()));
+        }
+        return context;
+    }
+
+    private Iterator<? extends Expression> mergeBinaryExpressions(LogicalBinaryExpression node) {
+        Iterator<? extends Expression> leftIt = Iterators.singletonIterator(node.getLeft());
+        Iterator<? extends Expression> rightIt = Iterators.singletonIterator(node.getRight());
+        if ((node.getLeft() instanceof LogicalBinaryExpression)
+            && (((LogicalBinaryExpression) node.getLeft()).getType() == node.getType())) {
+            leftIt = mergeBinaryExpressions((LogicalBinaryExpression) (node.getLeft()));
+        }
+        if ((node.getRight() instanceof LogicalBinaryExpression)
+            && (((LogicalBinaryExpression) node.getRight()).getType() == node.getType())) {
+            rightIt = mergeBinaryExpressions((LogicalBinaryExpression) (node.getRight()));
+        }
+        return Iterators.concat(leftIt, rightIt);
     }
 
     @Override
-    protected Void visitSelect(Select node, NodeCode context) {
+    protected NodeCode visitSelect(Select node, NodeCode context) {
         List<SelectItem> selectItems = node.getSelectItems();
         int l = selectItems.size();
         for (int i = 0; i < l; i++) {
             SelectItem item = selectItems.get(i);
             context.child("", i == l - 1 ? "" : ",", toTree(item));
         }
-        return null;
+        return context;
     }
 
     @Override
-    protected Object visitAllColumns(AllColumns node, NodeCode context) {
+    protected NodeCode visitAllColumns(AllColumns node, NodeCode context) {
         return context.leaf(node.getPrefix()
                 .map(qn -> qn.toString() + ".*")
                 .orElse("*"));
     }
 
     @Override
-    protected Object visitSingleColumn(SingleColumn node, NodeCode context) {
+    protected NodeCode visitSingleColumn(SingleColumn node, NodeCode context) {
         return context.child("",
                 node.getAlias().map(Identifier::getValue).orElse(""),
                 toTree(node.getExpression()));
     }
 
     @Override
-    protected Void visitQuerySpecification(QuerySpecification node, NodeCode context) {
+    protected NodeCode visitQuerySpecification(QuerySpecification node, NodeCode context) {
         context.child("SELECT", "", toTree(node.getSelect()));
         if (node.getFrom().isPresent()) {
             context.child("FROM", "", toTree(node.getFrom().get()));
@@ -117,21 +137,21 @@ public final class StatementLayout extends DefaultTraversalVisitor<Object, NodeC
         if (node.getWhere().isPresent()) {
             context.child("WHERE", "", toTree(node.getWhere().get()));
         }
-        return null;
+        return context;
     }
 
     @Override
-    protected Object visitAliasedRelation(AliasedRelation node, NodeCode context) {
+    protected NodeCode visitAliasedRelation(AliasedRelation node, NodeCode context) {
         return context.child("", node.getAlias().getValue(), toTree(node.getRelation()));
     }
 
     @Override
-    protected Object visitTable(Table node, NodeCode context) {
+    protected NodeCode visitTable(Table node, NodeCode context) {
         return context.leaf(toString(node.getName()));
     }
 
     @Override
-    protected Object visitJoin(Join node, NodeCode context) {
+    protected NodeCode visitJoin(Join node, NodeCode context) {
         if (!node.getCriteria().isPresent()) {
             return context.child("", "", toTree(node.getLeft()))
                     .child(toString(node.getType()), "", toTree(node.getRight()));

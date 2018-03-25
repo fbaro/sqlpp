@@ -90,6 +90,11 @@ public class StatementLayoutTest {
         assertFormatEquals(20, 2, "SELECT *\nFROM TBL1\nWHERE A = B\n  AND C = D");
     }
 
+    @Test
+    public void formatMultipleAndConditions_W20() {
+        assertFormatEquals(20, 2, "SELECT *\nFROM TBL1\nWHERE A = B\n  AND C = D\n  AND E = F\n  AND G = H");
+    }
+
     private static void assertFormatEquals(int lineWidth, int indentWidth, String sql) {
         Statement statement = new SqlParser(new SqlParserOptions()).createStatement(sql, new ParsingOptions());
         String formatted = StatementLayout.format(lineWidth, indentWidth, statement);
