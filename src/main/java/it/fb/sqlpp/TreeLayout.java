@@ -2,6 +2,7 @@ package it.fb.sqlpp;
 
 import com.google.common.base.Strings;
 
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -9,12 +10,12 @@ public final class TreeLayout {
 
     private static final String MANY_SPACES = Stream.generate(() -> " ").limit(1000).collect(Collectors.joining());
 
-    public static String format(int lineWidth, int indentWidth, TreeCode formatCode) {
+    public static String format(int lineWidth, int indentWidth, Consumer<? super NodeCode> formatCode) {
         TreeLayout tl = new TreeLayout(lineWidth, indentWidth);
         try {
             tl.format(formatCode, 0);
-        } catch (ReformatException e) {
-            throw new IllegalStateException("Unformattable!");
+        } catch (ReformatException ex) {
+            throw new IllegalStateException("Should not get a ReformatException at this level", ex);
         }
         return tl.sb.toString();
     }
@@ -22,6 +23,7 @@ public final class TreeLayout {
     private final int rowWidth;
     private final int indentWidth;
     private final StringBuilder sb = new StringBuilder();
+    private final StraightLayout straightLayout = new StraightLayout();
     private int curLineStartsAt = 0;
     private int curTextStartsAt = 0;
 
@@ -30,10 +32,10 @@ public final class TreeLayout {
         this.indentWidth = indentWidth;
     }
 
-    private void format(TreeCode formatCode, int indentLevel) throws ReformatException {
+    private void format(Consumer<? super NodeCode> formatCode, int indentLevel) {
         int curLen = sb.length();
         try {
-            formatCode.accept(new StraightLayout());
+            formatCode.accept(straightLayout);
         } catch (ReformatException ex) {
             sb.setLength(curLen);
             formatCode.accept(new IndentingLayout(indentLevel));
@@ -47,25 +49,21 @@ public final class TreeLayout {
         curTextStartsAt = sb.length();
     }
 
-    public interface TreeCode {
-        void accept(NodeCode layout) throws ReformatException;
-    }
-
     public interface NodeCode {
-        NodeCode leaf(String text) throws ReformatException;
+        NodeCode leaf(String text);
 
-        NodeCode child(String preLabel, String postLabel, TreeCode code) throws ReformatException;
+        NodeCode child(String preLabel, String postLabel, Consumer<? super NodeCode> code);
     }
 
-    public static final class ReformatException extends Exception {
+    private static final class ReformatException extends RuntimeException {
         private static final ReformatException INSTANCE = new ReformatException();
 
         private ReformatException() {
         }
     }
 
-    private class StraightLayout implements NodeCode {
-        public StraightLayout() {
+    private final class StraightLayout implements NodeCode {
+        private StraightLayout() {
         }
 
         private void append(String text, boolean addSpace) throws ReformatException {
@@ -91,7 +89,7 @@ public final class TreeLayout {
         }
 
         @Override
-        public NodeCode child(String preLabel, String postLabel, TreeCode code) throws ReformatException {
+        public NodeCode child(String preLabel, String postLabel, Consumer<? super NodeCode> code) throws ReformatException {
             append(preLabel, true);
             code.accept(this);
             append(postLabel, false);
@@ -99,12 +97,12 @@ public final class TreeLayout {
         }
     }
 
-    private final class IndentingLayout extends StraightLayout {
+    private final class IndentingLayout implements NodeCode {
 
         private final int indentLevel;
         private int callCount = 0;
 
-        public IndentingLayout(int indentLevel) {
+        private IndentingLayout(int indentLevel) {
             this.indentLevel = indentLevel;
         }
 
@@ -130,7 +128,7 @@ public final class TreeLayout {
         }
 
         @Override
-        public NodeCode child(String preLabel, String postLabel, TreeCode code) throws ReformatException {
+        public NodeCode child(String preLabel, String postLabel, Consumer<? super NodeCode> code) {
             if (++callCount > 1) {
                 newLine(indentLevel);
             }

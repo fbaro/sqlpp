@@ -2,31 +2,34 @@ package it.fb.sqlpp;
 
 import org.junit.Test;
 
+import java.util.function.Consumer;
+import it.fb.sqlpp.TreeLayout.NodeCode;
+
 import static org.junit.Assert.*;
 
 public class TreeLayoutTest {
 
-    private static TreeLayout.TreeCode xCommaY(String x, String y) {
+    private static Consumer<NodeCode> xCommaY(String x, String y) {
         return r -> r
                 .child("", ",", ch2 -> ch2.leaf(x))
                 .child("", "", ch2 -> ch2.leaf(y));
     }
 
-    private static TreeLayout.TreeCode xEqualY(String x, String y) {
+    private static Consumer<NodeCode> xEqualY(String x, String y) {
         return r -> r
                 .child("", "", ch2 -> ch2.leaf(x))
                 .child("=", "", ch2 -> ch2.leaf(y));
     }
 
-    private TreeLayout.TreeCode simpleCode = c -> c
+    private Consumer<NodeCode> simpleCode = c -> c
             .child("SELECT", "", xCommaY("A", "B"))
             .child("FROM", "", ch -> ch.leaf("TABLE"));
 
-    private TreeLayout.TreeCode longTablesCode = c -> c
+    private Consumer<NodeCode> longTablesCode = c -> c
             .child("SELECT", "", xCommaY("A", "B"))
             .child("FROM", "", xCommaY("VERYLONGTABLE1", "VERYLONGTABLE2"));
 
-    private TreeLayout.TreeCode innerJoinCode = c -> c
+    private Consumer<NodeCode> innerJoinCode = c -> c
             .child("SELECT", "", c1 -> c1.leaf("*"))
             .child("FROM", "", c1 -> c1
                     .child("", "", c2 -> c2.leaf("TBL1"))
