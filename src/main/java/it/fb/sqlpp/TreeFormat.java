@@ -69,9 +69,9 @@ public final class TreeFormat {
         private void accept(Tree tree, int indentLevel) {
             if (tree.isLeaf()) {
                 if (result.length() > 0 && result.charAt(result.length() - 1) == '\n') {
-                    if (tree.isFirstChild() && tree.parent.data.splitChildren) {
-                        indentLevel--;
-                    }
+//                    if (tree.isFirstChild() && tree.parent.data.splitChildren) {
+//                        indentLevel--;
+//                    }
                     for (int i = 0; i < indentLevel; i++) {
                         result.append(indentString);
                     }

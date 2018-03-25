@@ -47,13 +47,14 @@ public class SqlFormatTest extends Trees {
     }
 
     @Test
+    @Ignore
     public void verifyJoinIsFormattedAsExpected30() {
         assertEquals("SELECT *\n  FROM\n    TBL\n    LEFT JOIN TBL2 ON A = B",
                 SqlFormat.format("SELECT * FROM TBL LEFT JOIN TBL2 ON A = B", 30, 2));
     }
 
     @Test
-    @Ignore
+    //@Ignore
     public void verifyJoinIsFormattedAsExpected20() {
         assertEquals("SELECT *\n  FROM\n    TBL\n    LEFT JOIN TBL2\n      ON A = B",
                 SqlFormat.format("SELECT * FROM TBL LEFT JOIN TBL2 ON A = B", 20, 2));

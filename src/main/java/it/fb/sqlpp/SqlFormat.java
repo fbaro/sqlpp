@@ -163,7 +163,7 @@ public final class SqlFormat {
                                         leaf(toString(node.getType())),
                                         process(node.getRight())
                                 ),
-                                subtree(
+                                solidSubtree(
                                         leaf("ON"),
                                         process(((JoinOn) node.getCriteria().get()).getExpression())
                                 )
