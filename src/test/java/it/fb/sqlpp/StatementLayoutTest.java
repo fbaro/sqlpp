@@ -103,6 +103,37 @@ public class StatementLayoutTest {
     }
 
     @Test
+    public void formatMultipleArithmeticOperations_W80() {
+        assertFormatEquals(80, 2, "SELECT COL_1 + COL_2 - COL_3, COL_4 FROM DUAL");
+    }
+
+    @Test
+    public void formatMultipleArithmeticOperations_W40() {
+        assertFormatEquals(40, 2, "SELECT COL_1 + COL_2 - COL_3, COL_4\nFROM DUAL");
+    }
+
+    @Test
+    public void formatMultipleArithmeticOperations_W30() {
+        assertFormatEquals(30, 2, "SELECT COL_1 + COL_2 - COL_3,\n  COL_4\nFROM DUAL");
+    }
+
+    /**
+     * TODO: Come mai ho indentazione tripla sulle operazioni aritmetiche? Non dovrebbe essere doppia?
+     */
+    @Test
+    public void formatMultipleArithmeticOperations_W20() {
+        assertFormatEquals(20, 2, "SELECT COL_1\n      + COL_2\n      - COL_3,\n  COL_4\nFROM DUAL");
+    }
+
+    /**
+     * TODO: Come mai ho indentazione tripla sulle operazioni aritmetiche? Non dovrebbe essere doppia?
+     */
+    @Test
+    public void formatMultipleArithmeticOperations_W20_2() {
+        assertFormatEquals(20, 2, "SELECT COL_4,\n  COL_1\n      - COL_2\n      + COL_3\nFROM DUAL");
+    }
+
+    @Test
     public void formatAliases_W80() {
         assertFormatEquals(80, 2, "SELECT T.*, T.A FROM LONG_TABLE_1 AS T WHERE T.A = T.B");
     }

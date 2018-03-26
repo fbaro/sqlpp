@@ -3,16 +3,11 @@ package it.fb.sqlpp;
 import com.facebook.presto.sql.ExpressionFormatter;
 import com.facebook.presto.sql.tree.*;
 import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterators;
 import it.fb.sqlpp.TreeLayout.NodeCode;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
 
 public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, NodeCode> {
 
@@ -55,10 +50,52 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
                 .child(node.getType().getValue(), "", toTree(node.getRight()));
     }
 
+    private static final class ArithmeticParent {
+        public final ArithmeticBinaryExpression.Type type;
+        public final boolean leftMost;
+        public final NodeCode context;
+
+        ArithmeticParent(ArithmeticBinaryExpression.Type type, boolean leftMost, NodeCode context) {
+            this.type = type;
+            this.leftMost = leftMost;
+            this.context = context;
+        }
+    }
+
+    private static boolean isCompatible(ArithmeticBinaryExpression.Type type1, ArithmeticBinaryExpression.Type type2) {
+        switch (type1) {
+            case ADD:
+            case SUBTRACT:
+                return type2 == ArithmeticBinaryExpression.Type.ADD || type2 == ArithmeticBinaryExpression.Type.SUBTRACT;
+            case DIVIDE:
+            case MULTIPLY:
+                return type2 == ArithmeticBinaryExpression.Type.DIVIDE || type2 == ArithmeticBinaryExpression.Type.MULTIPLY;
+            default:
+                return false;
+        }
+    }
+
     @Override
     protected NodeCode visitArithmeticBinary(ArithmeticBinaryExpression node, NodeCode context) {
-        return context.child("", "", toTree(node.getLeft()))
-                .child(node.getType().getValue(), "", toTree(node.getRight()));
+        AstVisitor<NodeCode, ArithmeticParent> innerVisitor = new AstVisitor<NodeCode, ArithmeticParent>() {
+            @Override
+            protected NodeCode visitArithmeticBinary(ArithmeticBinaryExpression innerNode, ArithmeticParent context) {
+                if (!isCompatible(innerNode.getType(), context.type)) {
+                    return visitNode(innerNode, context);
+                }
+                process(innerNode.getLeft(), context);
+                process(innerNode.getRight(), new ArithmeticParent(innerNode.getType(), false, context.context));
+                return context.context;
+            }
+
+            @Override
+            protected NodeCode visitNode(Node innerNode, ArithmeticParent context) {
+                return context.context.child(context.leftMost ? "" : context.type.getValue(), "", toTree(innerNode));
+            }
+        };
+        innerVisitor.process(node.getLeft(), new ArithmeticParent(node.getType(), true, context));
+        innerVisitor.process(node.getRight(), new ArithmeticParent(node.getType(), false, context));
+        return context;
     }
 
     @Override
@@ -90,17 +127,24 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
 
     @Override
     protected NodeCode visitLogicalBinaryExpression(LogicalBinaryExpression node, NodeCode context) {
-        Iterator<? extends Node> merged = mergeNodes(
-                LogicalBinaryExpression.class,
-                node,
-                LogicalBinaryExpression::getLeft,
-                LogicalBinaryExpression::getRight,
-                lbe -> lbe.getType() == node.getType());
-        context.child("", "", toTree(merged.next()));
-        while (merged.hasNext()) {
-            context.child(node.getType().name(), "", toTree(merged.next()));
-        }
-        return context;
+        return new AstVisitor<NodeCode, NodeCode>() {
+            private int childCount = 0;
+
+            @Override
+            protected NodeCode visitLogicalBinaryExpression(LogicalBinaryExpression innerNode, NodeCode context) {
+                if (innerNode.getType() != node.getType()) {
+                    return visitNode(innerNode, context);
+                }
+                process(innerNode.getLeft(), context);
+                process(innerNode.getRight(), context);
+                return context;
+            }
+
+            @Override
+            protected NodeCode visitNode(Node innerNode, NodeCode context) {
+                return context.child(++childCount == 1 ? "" : node.getType().name(), "", toTree(innerNode));
+            }
+        }.process(node, context);
     }
 
     @Override
@@ -166,11 +210,11 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
         }
     }
 
-    private String toString(QualifiedName qn) {
+    private static String toString(QualifiedName qn) {
         return Joiner.on('.').join(qn.getOriginalParts());
     }
 
-    private String toString(Join.Type joinType) {
+    private static String toString(Join.Type joinType) {
         switch (joinType) {
             case CROSS:
             case INNER:
@@ -181,26 +225,6 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
                 return ",";
             default:
                 throw new UnsupportedOperationException("TODO: Other join types " + joinType);
-        }
-    }
-
-    private static <T extends Node> Iterator<? extends Node> mergeNodes(
-            Class<T> parentClass, T parent,
-            Function<? super T, ? extends Node> leftGetter,
-            Function<? super T, ? extends Node> rightGetter,
-            Predicate<? super T> isMergeable) {
-        Node left = leftGetter.apply(parent);
-        Node right = rightGetter.apply(parent);
-        boolean mergeableLeft = parentClass.isInstance(left) &&
-                isMergeable.test(parentClass.cast(left));
-        boolean mergeableRight = parentClass.isInstance(right) &&
-                isMergeable.test(parentClass.cast(right));
-        if (!mergeableLeft && !mergeableRight) {
-            return ImmutableList.of(left, right).iterator();
-        } else {
-            return Iterators.concat(
-                    mergeableLeft ? mergeNodes(parentClass, parentClass.cast(left), leftGetter, rightGetter, isMergeable) : Iterators.singletonIterator(left),
-                    mergeableRight ? mergeNodes(parentClass, parentClass.cast(right), leftGetter, rightGetter, isMergeable) : Iterators.singletonIterator(right));
         }
     }
 }
