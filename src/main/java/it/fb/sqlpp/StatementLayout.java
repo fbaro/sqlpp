@@ -3,6 +3,7 @@ package it.fb.sqlpp;
 import com.facebook.presto.sql.ExpressionFormatter;
 import com.facebook.presto.sql.tree.*;
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import it.fb.sqlpp.TreeLayout.NodeCode;
 
@@ -10,6 +11,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, NodeCode> {
 
@@ -33,6 +36,12 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
     @Override
     protected NodeCode visitSymbolReference(SymbolReference node, NodeCode context) {
         return context.leaf(node.getName());
+    }
+
+    @Override
+    protected NodeCode visitDereferenceExpression(DereferenceExpression node, NodeCode context) {
+        //TODO: Che roba e'??
+        return context.child("", "." + node.getField().getValue(), toTree(node.getBase()));
     }
 
     @Override
@@ -76,31 +85,22 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
 
     @Override
     protected NodeCode visitSubqueryExpression(SubqueryExpression node, NodeCode context) {
-        return context.child("(", ")", toTree(node.getQuery()));
+        return context.child("(", " )", toTree(node.getQuery()));
     }
 
     @Override
     protected NodeCode visitLogicalBinaryExpression(LogicalBinaryExpression node, NodeCode context) {
-        Iterator<? extends Expression> merged = mergeBinaryExpressions(node);
+        Iterator<? extends Node> merged = mergeNodes(
+                LogicalBinaryExpression.class,
+                node,
+                LogicalBinaryExpression::getLeft,
+                LogicalBinaryExpression::getRight,
+                lbe -> lbe.getType() == node.getType());
         context.child("", "", toTree(merged.next()));
         while (merged.hasNext()) {
             context.child(node.getType().name(), "", toTree(merged.next()));
         }
         return context;
-    }
-
-    private Iterator<? extends Expression> mergeBinaryExpressions(LogicalBinaryExpression node) {
-        Iterator<? extends Expression> leftIt = Iterators.singletonIterator(node.getLeft());
-        Iterator<? extends Expression> rightIt = Iterators.singletonIterator(node.getRight());
-        if ((node.getLeft() instanceof LogicalBinaryExpression)
-            && (((LogicalBinaryExpression) node.getLeft()).getType() == node.getType())) {
-            leftIt = mergeBinaryExpressions((LogicalBinaryExpression) (node.getLeft()));
-        }
-        if ((node.getRight() instanceof LogicalBinaryExpression)
-            && (((LogicalBinaryExpression) node.getRight()).getType() == node.getType())) {
-            rightIt = mergeBinaryExpressions((LogicalBinaryExpression) (node.getRight()));
-        }
-        return Iterators.concat(leftIt, rightIt);
     }
 
     @Override
@@ -117,14 +117,14 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
     @Override
     protected NodeCode visitAllColumns(AllColumns node, NodeCode context) {
         return context.leaf(node.getPrefix()
-                .map(qn -> qn.toString() + ".*")
+                .map(qn -> toString(qn) + ".*")
                 .orElse("*"));
     }
 
     @Override
     protected NodeCode visitSingleColumn(SingleColumn node, NodeCode context) {
         return context.child("",
-                node.getAlias().map(Identifier::getValue).orElse(""),
+                node.getAlias().map(i -> " AS " + i.getValue()).orElse(""),
                 toTree(node.getExpression()));
     }
 
@@ -142,7 +142,7 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
 
     @Override
     protected NodeCode visitAliasedRelation(AliasedRelation node, NodeCode context) {
-        return context.child("", node.getAlias().getValue(), toTree(node.getRelation()));
+        return context.child("", " AS " + node.getAlias().getValue(), toTree(node.getRelation()));
     }
 
     @Override
@@ -177,8 +177,30 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
             case LEFT:
             case RIGHT:
                 return joinType.name() + " JOIN";
+            case IMPLICIT:
+                return ",";
             default:
-                throw new UnsupportedOperationException("TODO: Other join types");
+                throw new UnsupportedOperationException("TODO: Other join types " + joinType);
+        }
+    }
+
+    private static <T extends Node> Iterator<? extends Node> mergeNodes(
+            Class<T> parentClass, T parent,
+            Function<? super T, ? extends Node> leftGetter,
+            Function<? super T, ? extends Node> rightGetter,
+            Predicate<? super T> isMergeable) {
+        Node left = leftGetter.apply(parent);
+        Node right = rightGetter.apply(parent);
+        boolean mergeableLeft = parentClass.isInstance(left) &&
+                isMergeable.test(parentClass.cast(left));
+        boolean mergeableRight = parentClass.isInstance(right) &&
+                isMergeable.test(parentClass.cast(right));
+        if (!mergeableLeft && !mergeableRight) {
+            return ImmutableList.of(left, right).iterator();
+        } else {
+            return Iterators.concat(
+                    mergeableLeft ? mergeNodes(parentClass, parentClass.cast(left), leftGetter, rightGetter, isMergeable) : Iterators.singletonIterator(left),
+                    mergeableRight ? mergeNodes(parentClass, parentClass.cast(right), leftGetter, rightGetter, isMergeable) : Iterators.singletonIterator(right));
         }
     }
 }

@@ -4,6 +4,7 @@ import com.facebook.presto.sql.parser.ParsingOptions;
 import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.parser.SqlParserOptions;
 import com.facebook.presto.sql.tree.Statement;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -93,6 +94,77 @@ public class StatementLayoutTest {
     @Test
     public void formatMultipleAndConditions_W20() {
         assertFormatEquals(20, 2, "SELECT *\nFROM TBL1\nWHERE A = B\n  AND C = D\n  AND E = F\n  AND G = H");
+    }
+
+    @Test
+    @Ignore
+    public void formatMultipleFromTables_W20() {
+        assertFormatEquals(20, 2, "SELECT *\nFROM LONG_TABLE_1\n  , LONG_TABLE_2\n  , LONG_TABLE_3");
+    }
+
+    @Test
+    public void formatAliases_W80() {
+        assertFormatEquals(80, 2, "SELECT T.*, T.A FROM LONG_TABLE_1 AS T WHERE T.A = T.B");
+    }
+
+    @Test
+    public void formatAliases_W40() {
+        assertFormatEquals(40, 2, "SELECT T.*, T.A\nFROM LONG_TABLE_1 AS T\nWHERE T.A = T.B");
+    }
+
+    @Test
+    public void formatAliases_W20() {
+        assertFormatEquals(20, 2, "SELECT T.*, T.A\nFROM LONG_TABLE_1 AS T\nWHERE T.A = T.B");
+    }
+
+    @Test
+    public void formatComplexQuery_W300() {
+        assertFormatEquals(300, 2, "" +
+                "SELECT FIRMID, EVENTTIME_EVTDATE, EVENTTIME_EVTTIMESEC, NEWSCATEGORY, NEWSID, NEWSPAGE, NEWSSUBJECT, " +
+                "( SELECT NI.ISINCODE FROM MDB_NEWS_INSTRUMENT AS NI WHERE NI.NEWSID = mdb_news.NEWSID AND NI.FIRMID = mdb_news.FIRMID AND rownum = 1 ) AS ISINCODE " +
+                "FROM mdb_news");
+    }
+
+    @Test
+    public void formatComplesQuery_W250() {
+        assertFormatEquals(250, 2, "" +
+                "SELECT FIRMID, EVENTTIME_EVTDATE, EVENTTIME_EVTTIMESEC, NEWSCATEGORY, NEWSID, NEWSPAGE, NEWSSUBJECT, " +
+                "( SELECT NI.ISINCODE FROM MDB_NEWS_INSTRUMENT AS NI WHERE NI.NEWSID = mdb_news.NEWSID AND NI.FIRMID = mdb_news.FIRMID AND rownum = 1 ) AS ISINCODE\n" +
+                "FROM mdb_news");
+    }
+
+    @Test
+    public void formatComplexQuery_W200() {
+        assertFormatEquals(200, 2, "" +
+                "SELECT FIRMID,\n  EVENTTIME_EVTDATE,\n  EVENTTIME_EVTTIMESEC,\n  NEWSCATEGORY,\n  NEWSID,\n  NEWSPAGE,\n  NEWSSUBJECT," +
+                "\n  ( SELECT NI.ISINCODE FROM MDB_NEWS_INSTRUMENT AS NI WHERE NI.NEWSID = mdb_news.NEWSID AND NI.FIRMID = mdb_news.FIRMID AND rownum = 1 ) AS ISINCODE\n" +
+                "FROM mdb_news");
+    }
+
+    /**
+     * Notice this test appears to be wrong: the second line is longer than 140 characters.
+     * Splitting however does not occur because the line length is exceeded with "AS ISINCODE", which is treated as
+     * a trailer, and because of this is not subject to line length testing.
+     * This might change in future, in case it appears to produce consistently wrong results.
+     */
+    @Test
+    public void formatComplexQuery_W140() {
+        assertFormatEquals(140, 2, "" +
+                "SELECT FIRMID," +
+                "\n  ( SELECT NI.ISINCODE FROM MDB_NEWS_INSTRUMENT AS NI WHERE NI.NEWSID = mdb_news.NEWSID AND NI.FIRMID = mdb_news.FIRMID AND rownum = 1 ) AS ISINCODE\n" +
+                "FROM mdb_news");
+    }
+
+    @Test
+    public void formatComplexQuery_W80() {
+        assertFormatEquals(80, 2, "" +
+                "SELECT FIRMID,\n" +
+                "  ( SELECT NI.ISINCODE\n" +
+                "        FROM MDB_NEWS_INSTRUMENT AS NI\n" +
+                "        WHERE NI.NEWSID = mdb_news.NEWSID\n" +
+                "          AND NI.FIRMID = mdb_news.FIRMID\n" +
+                "          AND rownum = 1 ) AS ISINCODE\n" +
+                "FROM mdb_news");
     }
 
     private static void assertFormatEquals(int lineWidth, int indentWidth, String sql) {
