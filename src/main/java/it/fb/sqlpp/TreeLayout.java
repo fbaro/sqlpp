@@ -53,6 +53,8 @@ public final class TreeLayout {
         NodeCode leaf(String text);
 
         NodeCode child(String preLabel, String postLabel, Consumer<? super NodeCode> code);
+
+        NodeCode singleChild(String preLabel, String postLabel, Consumer<? super NodeCode> code);
     }
 
     private static final class ReformatException extends RuntimeException {
@@ -95,6 +97,11 @@ public final class TreeLayout {
             append(postLabel, false);
             return this;
         }
+
+        @Override
+        public NodeCode singleChild(String preLabel, String postLabel, Consumer<? super NodeCode> code) {
+            return child(preLabel, postLabel, code);
+        }
     }
 
     private final class IndentingLayout implements NodeCode {
@@ -134,6 +141,17 @@ public final class TreeLayout {
             }
             append(preLabel, true);
             format(code, indentLevel + 1);
+            append(postLabel, false);
+            return this;
+        }
+
+        @Override
+        public NodeCode singleChild(String preLabel, String postLabel, Consumer<? super NodeCode> code) {
+            if (++callCount > 1) {
+                throw new IllegalStateException("Should not have called other methods before singleChild");
+            }
+            append(preLabel, true);
+            format(code, indentLevel);
             append(postLabel, false);
             return this;
         }

@@ -167,7 +167,7 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
 
     @Override
     protected NodeCode visitSingleColumn(SingleColumn node, NodeCode context) {
-        return context.child("",
+        return context.singleChild("",
                 node.getAlias().map(i -> " AS " + i.getValue()).orElse(""),
                 toTree(node.getExpression()));
     }

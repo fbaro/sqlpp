@@ -117,20 +117,14 @@ public class StatementLayoutTest {
         assertFormatEquals(30, 2, "SELECT COL_1 + COL_2 - COL_3,\n  COL_4\nFROM DUAL");
     }
 
-    /**
-     * TODO: Come mai ho indentazione tripla sulle operazioni aritmetiche? Non dovrebbe essere doppia?
-     */
     @Test
     public void formatMultipleArithmeticOperations_W20() {
-        assertFormatEquals(20, 2, "SELECT COL_1\n      + COL_2\n      - COL_3,\n  COL_4\nFROM DUAL");
+        assertFormatEquals(20, 2, "SELECT COL_1\n    + COL_2\n    - COL_3,\n  COL_4\nFROM DUAL");
     }
 
-    /**
-     * TODO: Come mai ho indentazione tripla sulle operazioni aritmetiche? Non dovrebbe essere doppia?
-     */
     @Test
     public void formatMultipleArithmeticOperations_W20_2() {
-        assertFormatEquals(20, 2, "SELECT COL_4,\n  COL_1\n      - COL_2\n      + COL_3\nFROM DUAL");
+        assertFormatEquals(20, 2, "SELECT COL_4,\n  COL_1\n    - COL_2\n    + COL_3\nFROM DUAL");
     }
 
     @Test
@@ -191,10 +185,10 @@ public class StatementLayoutTest {
         assertFormatEquals(80, 2, "" +
                 "SELECT FIRMID,\n" +
                 "  ( SELECT NI.ISINCODE\n" +
-                "        FROM MDB_NEWS_INSTRUMENT AS NI\n" +
-                "        WHERE NI.NEWSID = mdb_news.NEWSID\n" +
-                "          AND NI.FIRMID = mdb_news.FIRMID\n" +
-                "          AND rownum = 1 ) AS ISINCODE\n" +
+                "      FROM MDB_NEWS_INSTRUMENT AS NI\n" +
+                "      WHERE NI.NEWSID = mdb_news.NEWSID\n" +
+                "        AND NI.FIRMID = mdb_news.FIRMID\n" +
+                "        AND rownum = 1 ) AS ISINCODE\n" +
                 "FROM mdb_news");
     }
 
