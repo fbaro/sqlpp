@@ -4,10 +4,9 @@ import com.facebook.presto.sql.parser.ParsingOptions;
 import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.parser.SqlParserOptions;
 import com.facebook.presto.sql.tree.Statement;
-import org.junit.Ignore;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 public class StatementLayoutTest {
 
@@ -34,6 +33,16 @@ public class StatementLayoutTest {
     @Test
     public void formatSimpleSelectWhere_W15() {
         assertFormatEquals(15, 2, "SELECT *\nFROM TBL\nWHERE A = B");
+    }
+
+    @Test
+    public void formatFullSelect_W80() {
+        assertFormatEquals(80, 2, "SELECT * FROM TBL WHERE A = B GROUP BY C HAVING D > 1 ORDER BY E");
+    }
+
+    @Test
+    public void formatFullSelect_W15() {
+        assertFormatEquals(15, 2, "SELECT *\nFROM TBL\nWHERE A = B\nGROUP BY C\nHAVING D > 1\nORDER BY E");
     }
 
     @Test
@@ -159,6 +168,26 @@ public class StatementLayoutTest {
     @Test
     public void formatAliases_W20() {
         assertFormatEquals(20, 2, "SELECT T.*, T.A\nFROM LONG_TABLE_1 AS T\nWHERE T.A = T.B");
+    }
+
+    @Test
+    public void formatInList_W80() {
+        assertFormatEquals(80, 2, "SELECT * FROM TBL WHERE A IN ( X, Y )");
+    }
+
+    @Test
+    public void formatInList_W20() {
+        assertFormatEquals(20, 2, "SELECT *\nFROM TBL\nWHERE A IN ( X, Y )");
+    }
+
+    @Test
+    public void formatInListWithLongIdentifiers_W35() {
+        assertFormatEquals(35, 2, "SELECT *\nFROM TBL\nWHERE A\n  IN ( LONG_COL_1, LONG_COL_2 )");
+    }
+
+    @Test
+    public void formatInListWithLongIdentifiers_W30() {
+        assertFormatEquals(30, 2, "SELECT *\nFROM TBL\nWHERE A\n  IN ( LONG_COL_1,\n    LONG_COL_2 )");
     }
 
     @Test

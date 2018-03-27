@@ -158,6 +158,22 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
     }
 
     @Override
+    protected NodeCode visitInPredicate(InPredicate node, NodeCode context) {
+        return context.child("", "", toTree(node.getValue()))
+                .child("IN", "", toTree(node.getValueList()));
+    }
+
+    @Override
+    protected NodeCode visitInListExpression(InListExpression node, NodeCode context) {
+        List<Expression> values = node.getValues();
+        for (int i = 0, l = values.size(); i < l; i++) {
+            Expression e = values.get(i);
+            context.child(i == 0 ? "(" : "", i == l - 1 ? " )" : ",", toTree(e));
+        }
+        return context;
+    }
+
+    @Override
     protected NodeCode visitSelect(Select node, NodeCode context) {
         List<SelectItem> selectItems = node.getSelectItems();
         int l = selectItems.size();
@@ -191,7 +207,25 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
         if (node.getWhere().isPresent()) {
             context.child("WHERE", "", toTree(node.getWhere().get()));
         }
+        if (node.getGroupBy().isPresent()) {
+            context.child("GROUP BY", "", toTree(node.getGroupBy().get()));
+        }
+        if (node.getHaving().isPresent()) {
+            context.child("HAVING", "", toTree(node.getHaving().get()));
+        }
+        if (node.getOrderBy().isPresent()) {
+            context.child("ORDER BY", "", toTree(node.getOrderBy().get()));
+        }
         return context;
+    }
+
+    @Override
+    protected NodeCode visitQuery(Query node, NodeCode context) {
+        if (!node.getWith().isPresent() && !node.getOrderBy().isPresent()
+                && !node.getLimit().isPresent()) {
+            return context.singleChild("", "", toTree(node.getQueryBody()));
+        }
+        throw new UnsupportedOperationException("TODO");
     }
 
     @Override
