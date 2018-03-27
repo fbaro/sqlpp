@@ -191,6 +191,21 @@ public class StatementLayoutTest {
     }
 
     @Test
+    public void formatLike_W80() {
+        assertFormatEquals(80, 2, "SELECT * FROM TBL WHERE COL LIKE '%' ESCAPE 'e'");
+    }
+
+    @Test
+    public void formatLike_W40() {
+        assertFormatEquals(40, 2, "SELECT *\nFROM TBL\nWHERE COL LIKE '%' ESCAPE 'e'");
+    }
+
+    @Test
+    public void formatLike_W20() {
+        assertFormatEquals(20, 2, "SELECT *\nFROM TBL\nWHERE COL\n  LIKE '%'\n  ESCAPE 'e'");
+    }
+
+    @Test
     public void formatComplexQuery_W300() {
         assertFormatEquals(300, 2, "" +
                 "SELECT FIRMID, EVENTTIME_EVTDATE, EVENTTIME_EVTTIMESEC, NEWSCATEGORY, NEWSID, NEWSPAGE, NEWSSUBJECT, " +

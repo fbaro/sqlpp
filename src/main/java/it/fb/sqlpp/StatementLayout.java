@@ -174,6 +174,21 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
     }
 
     @Override
+    protected NodeCode visitLikePredicate(LikePredicate node, NodeCode context) {
+        context.child("", "", toTree(node.getValue()))
+                .child("LIKE", "", toTree(node.getPattern()));
+        if (node.getEscape() != null) {
+            context.child("ESCAPE", "", toTree(node.getEscape()));
+        }
+        return context;
+    }
+
+    @Override
+    protected NodeCode visitSearchedCaseExpression(SearchedCaseExpression node, NodeCode context) {
+        throw new UnsupportedOperationException("TODO");
+    }
+
+    @Override
     protected NodeCode visitSelect(Select node, NodeCode context) {
         List<SelectItem> selectItems = node.getSelectItems();
         int l = selectItems.size();
