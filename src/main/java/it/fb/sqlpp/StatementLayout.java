@@ -81,7 +81,7 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
             @Override
             protected NodeCode visitArithmeticBinary(ArithmeticBinaryExpression innerNode, ArithmeticParent context) {
                 if (!isCompatible(innerNode.getType(), context.type)) {
-                    return visitNode(innerNode, context);
+                    return visitExpression(innerNode, context);
                 }
                 process(innerNode.getLeft(), context);
                 process(innerNode.getRight(), new ArithmeticParent(innerNode.getType(), false, context.context));
@@ -89,8 +89,13 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
             }
 
             @Override
-            protected NodeCode visitNode(Node innerNode, ArithmeticParent context) {
+            protected NodeCode visitExpression(Expression innerNode, ArithmeticParent context) {
                 return context.context.child(context.leftMost ? "" : context.type.getValue(), "", toTree(innerNode));
+            }
+
+            @Override
+            protected NodeCode visitNode(Node node, ArithmeticParent context) {
+                throw new IllegalStateException("Did not expect node " + node);
             }
         };
         innerVisitor.process(node.getLeft(), new ArithmeticParent(node.getType(), true, context));
@@ -133,7 +138,7 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
             @Override
             protected NodeCode visitLogicalBinaryExpression(LogicalBinaryExpression innerNode, NodeCode context) {
                 if (innerNode.getType() != node.getType()) {
-                    return visitNode(innerNode, context);
+                    return visitExpression(innerNode, context);
                 }
                 process(innerNode.getLeft(), context);
                 process(innerNode.getRight(), context);
@@ -141,8 +146,13 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
             }
 
             @Override
-            protected NodeCode visitNode(Node innerNode, NodeCode context) {
+            protected NodeCode visitExpression(Expression innerNode, NodeCode context) {
                 return context.child(++childCount == 1 ? "" : node.getType().name(), "", toTree(innerNode));
+            }
+
+            @Override
+            protected NodeCode visitIsNotNullPredicate(IsNotNullPredicate node, NodeCode context) {
+                throw new IllegalStateException("Did not expect node " + node);
             }
         }.process(node, context);
     }
@@ -194,20 +204,54 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
         return context.leaf(toString(node.getName()));
     }
 
+    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+    private static final class JoinParent {
+        public final Join.Type type;
+        public final Optional<JoinCriteria> criteria;
+        public final boolean leftMost;
+        public final NodeCode context;
+
+        JoinParent(Join.Type type, Optional<JoinCriteria> criteria, boolean leftMost, NodeCode context) {
+            this.type = type;
+            this.criteria = criteria;
+            this.leftMost = leftMost;
+            this.context = context;
+        }
+    }
+
     @Override
     protected NodeCode visitJoin(Join node, NodeCode context) {
-        if (!node.getCriteria().isPresent()) {
-            return context.child("", "", toTree(node.getLeft()))
-                    .child(toString(node.getType()), "", toTree(node.getRight()));
-        } else if (node.getCriteria().get() instanceof JoinOn) {
-            return context.child("", "", toTree(node.getLeft()))
-                    .child(toString(node.getType()), "", inCtx -> {
-                        process(node.getRight(), inCtx);
-                        inCtx.child("ON", "", toTree(((JoinOn) node.getCriteria().get()).getExpression()));
+        AstVisitor<NodeCode, JoinParent> innerVisitor = new AstVisitor<NodeCode, JoinParent>() {
+            @Override
+            protected NodeCode visitJoin(Join innerNode, JoinParent context) {
+                process(innerNode.getLeft(), context);
+                process(innerNode.getRight(), new JoinParent(innerNode.getType(), innerNode.getCriteria(), false, context.context));
+                return context.context;
+            }
+
+            @Override
+            protected NodeCode visitRelation(Relation innerNode, JoinParent context) {
+                String preLabel = context.leftMost ? "" : StatementLayout.toString(context.type);
+                if (context.leftMost || !context.criteria.isPresent()) {
+                    return context.context.child(preLabel, "", toTree(innerNode));
+                } else if (context.criteria.get() instanceof JoinOn) {
+                    return context.context.child(preLabel, "", inCtx -> {
+                        StatementLayout.this.process(innerNode, inCtx);
+                        inCtx.child("ON", "", toTree(((JoinOn) context.criteria.get()).getExpression()));
                     });
-        } else {
-            throw new UnsupportedOperationException("Unsupported join criteria: " + node.getCriteria());
-        }
+                } else {
+                    throw new UnsupportedOperationException("Unsupported join criteria: " + node.getCriteria());
+                }
+            }
+
+            @Override
+            protected NodeCode visitNode(Node innerNode, JoinParent context) {
+                throw new IllegalStateException("Did not expect node " + innerNode);
+            }
+        };
+        innerVisitor.process(node.getLeft(), new JoinParent(node.getType(), node.getCriteria(), true, context));
+        innerVisitor.process(node.getRight(), new JoinParent(node.getType(), node.getCriteria(), false, context));
+        return context;
     }
 
     private static String toString(QualifiedName qn) {

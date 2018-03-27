@@ -97,9 +97,28 @@ public class StatementLayoutTest {
     }
 
     @Test
-    @Ignore
     public void formatMultipleFromTables_W20() {
         assertFormatEquals(20, 2, "SELECT *\nFROM LONG_TABLE_1\n  , LONG_TABLE_2\n  , LONG_TABLE_3");
+    }
+
+    @Test
+    public void formatMultipleJoins_W80() {
+        assertFormatEquals(80, 2, "SELECT * FROM TBL1 INNER JOIN TBL2 ON A = B LEFT JOIN TBL3 ON C < D");
+    }
+
+    @Test
+    public void formatMultipleJoins_W60() {
+        assertFormatEquals(60, 2, "SELECT *\nFROM TBL1 INNER JOIN TBL2 ON A = B LEFT JOIN TBL3 ON C < D");
+    }
+
+    @Test
+    public void formatMultipleJoins_W40() {
+        assertFormatEquals(40, 2, "SELECT *\nFROM TBL1\n  INNER JOIN TBL2 ON A = B\n  LEFT JOIN TBL3 ON C < D");
+    }
+
+    @Test
+    public void formatMultipleJoins_W20() {
+        assertFormatEquals(20, 2, "SELECT *\nFROM TBL1\n  INNER JOIN TBL2\n    ON A = B\n  LEFT JOIN TBL3\n    ON C < D");
     }
 
     @Test
