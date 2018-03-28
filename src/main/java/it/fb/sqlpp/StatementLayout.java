@@ -184,8 +184,22 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
     }
 
     @Override
+    protected NodeCode visitWhenClause(WhenClause node, NodeCode context) {
+        return context.child("", "", toTree(node.getOperand()))
+                .child("THEN", "", toTree(node.getResult()));
+    }
+
+    @Override
     protected NodeCode visitSearchedCaseExpression(SearchedCaseExpression node, NodeCode context) {
-        throw new UnsupportedOperationException("TODO");
+        List<WhenClause> whenClauses = node.getWhenClauses();
+        for (int i = 0; i < whenClauses.size(); i++) {
+            WhenClause wc = whenClauses.get(i);
+            context.child(i == 0 ? "CASE WHEN" : "WHEN", "", toTree(wc));
+        }
+        node.getDefaultValue()
+            .map(StatementLayout.this::toTree)
+            .ifPresent(els -> context.child("ELSE", "", els));
+        return context.leaf("END");
     }
 
     @Override

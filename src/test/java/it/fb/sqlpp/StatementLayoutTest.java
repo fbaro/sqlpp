@@ -206,6 +206,26 @@ public class StatementLayoutTest {
     }
 
     @Test
+    public void formatCase_W80() {
+        assertFormatEquals(80, 2, "SELECT X, CASE WHEN A = B THEN 1 WHEN C = D THEN 2 ELSE 3 END FROM TBL");
+    }
+
+    @Test
+    public void formatCase_W60() {
+        assertFormatEquals(60, 2, "SELECT X,\n  CASE WHEN A = B THEN 1 WHEN C = D THEN 2 ELSE 3 END\nFROM TBL");
+    }
+
+    @Test
+    public void formatCase_W40() {
+        assertFormatEquals(40, 2, "SELECT X,\n  CASE WHEN A = B THEN 1\n    WHEN C = D THEN 2\n    ELSE 3\n    END\nFROM TBL");
+    }
+
+    @Test
+    public void formatCase_W20() {
+        assertFormatEquals(20, 2, "SELECT X,\n  CASE WHEN A = B\n      THEN 1\n    WHEN C = D\n      THEN 2\n    ELSE 3\n    END\nFROM TBL");
+    }
+
+    @Test
     public void formatComplexQuery_W300() {
         assertFormatEquals(300, 2, "" +
                 "SELECT FIRMID, EVENTTIME_EVTDATE, EVENTTIME_EVTTIMESEC, NEWSCATEGORY, NEWSID, NEWSPAGE, NEWSSUBJECT, " +
