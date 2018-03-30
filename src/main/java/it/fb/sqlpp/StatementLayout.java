@@ -23,6 +23,16 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
         return nc -> process(node, nc);
     }
 
+    private Consumer<NodeCode> toChildren(List<? extends Node> nodes, String opening, String joiner, String closing) {
+        return nc -> {
+            for (int i = 0; i < nodes.size(); i++) {
+                nc.child(i == 0 ? opening : "",
+                        i == nodes.size() - 1 ? closing : joiner,
+                        toTree(nodes.get(i)));
+            }
+        };
+    }
+
     @Override
     protected NodeCode visitIdentifier(Identifier node, NodeCode context) {
         return context.leaf(node.getValue());
@@ -200,6 +210,78 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
             .map(StatementLayout.this::toTree)
             .ifPresent(els -> context.child("ELSE", "", els));
         return context.leaf("END");
+    }
+
+    @Override
+    protected NodeCode visitFunctionCall(FunctionCall node, NodeCode context) {
+        if (node.getFilter().isPresent() || node.getOrderBy().isPresent()) {
+            throw new UnsupportedOperationException("TODO");
+        }
+
+        String opening = toString(node.getName()) + "(" + (node.isDistinct() ? "DISTINCT" : "");
+        List<Expression> arguments = node.getArguments();
+
+        if (!node.getWindow().isPresent()) {
+            if (arguments.isEmpty()) {
+                context.leaf(opening + ")");
+            } else {
+                toChildren(arguments, opening, ",", ")").accept(context);
+            }
+            return context;
+        }
+
+        if (arguments.isEmpty()) {
+            context.leaf(opening + ")");
+        } else {
+            context.child(opening, "", toChildren(arguments, "", ",", ")"));
+        }
+        return context.child("OVER(", ")", toTree(node.getWindow().get()));
+    }
+
+    @Override
+    public NodeCode visitWindow(Window node, NodeCode context) {
+        if (!node.getPartitionBy().isEmpty()) {
+            context.child("PARTITION BY", "", toChildren(node.getPartitionBy(), "", ",", ""));
+        }
+        if (node.getOrderBy().isPresent()) {
+            context.child("ORDER BY", "", toTree(node.getOrderBy().get()));
+        }
+        return context;
+    }
+
+    @Override
+    protected NodeCode visitOrderBy(OrderBy node, NodeCode context) {
+        toChildren(node.getSortItems(), "", ",", "").accept(context);
+        return context;
+    }
+
+    @Override
+    protected NodeCode visitSortItem(SortItem node, NodeCode context) {
+        StringBuilder builder = new StringBuilder();
+        switch (node.getOrdering()) {
+            case ASCENDING:
+                break;
+            case DESCENDING:
+                builder.append(" DESC");
+                break;
+            default:
+                throw new UnsupportedOperationException("unknown ordering: " + node.getOrdering());
+        }
+
+        switch (node.getNullOrdering()) {
+            case FIRST:
+                builder.append(" NULLS FIRST");
+                break;
+            case LAST:
+                builder.append(" NULLS LAST");
+                break;
+            case UNDEFINED:
+                // no op
+                break;
+            default:
+                throw new UnsupportedOperationException("unknown null ordering: " + node.getNullOrdering());
+        }
+        return context.child("", builder.toString(), toTree(node.getSortKey()));
     }
 
     @Override

@@ -226,6 +226,51 @@ public class StatementLayoutTest {
     }
 
     @Test
+    public void formatFunction_W80() {
+        assertFormatEquals(80, 2, "SELECT X, FUNC( COL1, COL2, COL3) FROM TBL");
+    }
+
+    @Test
+    public void formatFunction_W40() {
+        assertFormatEquals(40, 2, "SELECT X, FUNC( COL1, COL2, COL3)\nFROM TBL");
+    }
+
+    @Test
+    public void formatFunction_W30() {
+        assertFormatEquals(30, 2, "SELECT X,\n  FUNC( COL1, COL2, COL3)\nFROM TBL");
+    }
+
+    @Test
+    public void formatFunction_W20() {
+        assertFormatEquals(20, 2, "SELECT X,\n  FUNC( COL1,\n    COL2,\n    COL3)\nFROM TBL");
+    }
+
+    @Test
+    public void formatWindowFunction_W100() {
+        assertFormatEquals(100, 2, "SELECT X, LEAD( COL1, COL2, COL3) OVER( PARTITION BY X, Y ORDER BY Z, K DESC) FROM TBL");
+    }
+
+    @Test
+    public void formatWindowFunction_W80() {
+        assertFormatEquals(80, 2, "SELECT X, LEAD( COL1, COL2, COL3) OVER( PARTITION BY X, Y ORDER BY Z, K DESC)\nFROM TBL");
+    }
+
+    @Test
+    public void formatWindowFunction_W70() {
+        assertFormatEquals(70, 2, "SELECT X,\n  LEAD( COL1, COL2, COL3) OVER( PARTITION BY X, Y ORDER BY Z, K DESC)\nFROM TBL");
+    }
+
+    @Test
+    public void formatWindowFunction_W60() {
+        assertFormatEquals(60, 2, "SELECT X,\n  LEAD( COL1, COL2, COL3)\n    OVER( PARTITION BY X, Y ORDER BY Z, K DESC)\nFROM TBL");
+    }
+
+    @Test
+    public void formatWindowFunction_W40() {
+        assertFormatEquals(40, 2, "SELECT X,\n  LEAD( COL1, COL2, COL3)\n    OVER( PARTITION BY X, Y\n      ORDER BY Z, K DESC)\nFROM TBL");
+    }
+
+    @Test
     public void formatComplexQuery_W300() {
         assertFormatEquals(300, 2, "" +
                 "SELECT FIRMID, EVENTTIME_EVTDATE, EVENTTIME_EVTTIMESEC, NEWSCATEGORY, NEWSID, NEWSPAGE, NEWSSUBJECT, " +
