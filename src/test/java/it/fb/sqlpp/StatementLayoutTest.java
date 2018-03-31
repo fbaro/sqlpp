@@ -319,7 +319,7 @@ public class StatementLayoutTest {
     }
 
     @Test
-    public void formatComplesQuery_W250() {
+    public void formatComplexQuery_W250() {
         assertFormatEquals(250, 2, "" +
                 "SELECT FIRMID, EVENTTIME_EVTDATE, EVENTTIME_EVTTIMESEC, NEWSCATEGORY, NEWSID, NEWSPAGE, NEWSSUBJECT, " +
                 "( SELECT NI.ISINCODE FROM MDB_NEWS_INSTRUMENT AS NI WHERE NI.NEWSID = mdb_news.NEWSID AND NI.FIRMID = mdb_news.FIRMID AND rownum = 1 ) AS ISINCODE\n" +
@@ -358,6 +358,61 @@ public class StatementLayoutTest {
                 "        AND NI.FIRMID = mdb_news.FIRMID\n" +
                 "        AND rownum = 1 ) AS ISINCODE\n" +
                 "FROM mdb_news");
+    }
+
+    @Test
+    public void formatInsert_W80() {
+        assertFormatEquals(80, 2, "INSERT INTO TBL ( A, B, C) VALUES ( 1, 2, 3)");
+    }
+
+    @Test
+    public void formatInsert_W40() {
+        assertFormatEquals(40, 2, "INSERT INTO TBL ( A, B, C)\nVALUES ( 1, 2, 3)");
+    }
+
+    @Test
+    public void formatInsert_W20() {
+        assertFormatEquals(20, 2, "INSERT INTO TBL ( A,\n  B,\n  C)\nVALUES ( 1, 2, 3)");
+    }
+
+    @Test
+    public void formatInsert_W15() {
+        assertFormatEquals(15, 2, "INSERT INTO TBL ( A,\n  B,\n  C)\nVALUES ( 1,\n  2,\n  3)");
+    }
+
+    @Test
+    public void formatInsert_2_W80() {
+        assertFormatEquals(80, 2, "INSERT INTO TBL VALUES ( ( 1, 2, 3), ( 4, 5, 6))");
+    }
+
+    @Test
+    public void formatInsert_2_W40() {
+        assertFormatEquals(40, 2, "INSERT INTO TBL\nVALUES ( ( 1, 2, 3), ( 4, 5, 6))");
+    }
+
+    @Test
+    public void formatInsert_2_W30() {
+        assertFormatEquals(30, 2, "INSERT INTO TBL\nVALUES ( ( 1, 2, 3),\n  ( 4, 5, 6))");
+    }
+
+    // TODO: Looks uglyish
+    @Test
+    public void formatInsert_2_W15() {
+        assertFormatEquals(15, 2, "INSERT INTO TBL\nVALUES ( ( 1,\n    2,\n    3),\n  ( 4, 5, 6))");
+    }
+
+    @Test
+    public void formatInsert_3_W80() {
+        assertFormatEquals(80, 2, "INSERT INTO TBL SELECT * FROM TBL");
+    }
+
+    @Test
+    public void formatInsert_3_W30() {
+    }
+
+    @Test
+    public void formatInsert_3_W05() {
+        assertFormatEquals(5, 2, "INSERT INTO TBL\nSELECT *\n  FROM TBL");
     }
 
     private static void assertFormatEquals(int lineWidth, int indentWidth, String sql) {

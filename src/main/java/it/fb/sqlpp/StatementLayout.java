@@ -1,6 +1,8 @@
 package it.fb.sqlpp;
 
 import com.facebook.presto.sql.ExpressionFormatter;
+import com.facebook.presto.sql.parser.ParsingOptions;
+import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.tree.*;
 import com.google.common.base.Joiner;
 
@@ -14,6 +16,12 @@ public final class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, 
     @SuppressWarnings("WeakerAccess")
     public static String format(int lineWidth, int indentWidth, Statement statement) {
         return TreeLayout.format(lineWidth, indentWidth, INSTANCE.toTree(statement));
+    }
+
+    @SuppressWarnings("WeakerAccess")
+    public static String format(int lineWidth, int indentWidth, String statement) {
+        Statement parsed = new SqlParser().createStatement(statement, new ParsingOptions());
+        return format(lineWidth, indentWidth, parsed);
     }
 
     private StatementLayout() {
@@ -315,6 +323,26 @@ public final class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, 
     }
 
     @Override
+    protected TreeVisitor visitAliasedRelation(AliasedRelation node, TreeVisitor context) {
+        return context.child("", " AS " + node.getAlias().getValue(), toTree(node.getRelation()));
+    }
+
+    @Override
+    protected TreeVisitor visitRow(Row node, TreeVisitor context) {
+        toChildren(node.getItems(), "(", ",", ")").accept(context);
+        return context;
+    }
+
+    @Override
+    protected TreeVisitor visitValues(Values node, TreeVisitor context) {
+        if (node.getRows().size() == 1) {
+            return context.singleChild("VALUES", "", toTree(node.getRows().get(0)));
+        } else {
+            return context.singleChild("VALUES (", ")", toChildren(node.getRows(), "", ",", ""));
+        }
+    }
+
+    @Override
     protected TreeVisitor visitQuerySpecification(QuerySpecification node, TreeVisitor context) {
         context.child("SELECT", "", toTree(node.getSelect()));
         if (node.getFrom().isPresent()) {
@@ -345,8 +373,14 @@ public final class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, 
     }
 
     @Override
-    protected TreeVisitor visitAliasedRelation(AliasedRelation node, TreeVisitor context) {
-        return context.child("", " AS " + node.getAlias().getValue(), toTree(node.getRelation()));
+    protected TreeVisitor visitInsert(Insert node, TreeVisitor context) {
+        if (node.getColumns().isPresent()) {
+            context.child("INSERT INTO " + toString(node.getTarget()) + " (", ")",
+                    toChildren(node.getColumns().get(), "", ",", ""));
+        } else {
+            context.leaf("INSERT INTO " + toString(node.getTarget()));
+        }
+        return context.child("", "", toTree(node.getQuery()));
     }
 
     @Override
