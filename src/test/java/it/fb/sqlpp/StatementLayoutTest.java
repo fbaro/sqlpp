@@ -271,6 +271,46 @@ public class StatementLayoutTest {
     }
 
     @Test
+    public void formatOperatorPrecedence_1_W80() {
+        assertFormatEquals(80, 2, "SELECT X +( Y * Z) + K");
+    }
+
+    @Test
+    public void formatOperatorPrecedence_1_W20() {
+        assertFormatEquals(20, 2, "SELECT X\n    +( Y * Z)\n    + K");
+    }
+
+    @Test
+    public void formatOperatorPrecedence_2_W80() {
+        assertFormatEquals(80, 2, "SELECT ( X + Y) *( Z + K)");
+    }
+
+    @Test
+    public void formatOperatorPrecedence_2_W20() {
+        assertFormatEquals(20, 2, "SELECT ( X + Y)\n    *( Z + K)");
+    }
+
+    @Test
+    public void formatOperatorPrecedence_3_W80() {
+        assertFormatEquals(80, 2, "SELECT 1 FROM TBL WHERE ( A = B OR C = D OR E = G) AND G = H");
+    }
+
+    @Test
+    public void formatOperatorPrecedence_3_W35() {
+        assertFormatEquals(35, 2, "SELECT 1\nFROM TBL\nWHERE ( A = B OR C = D OR E = G)\n  AND G = H");
+    }
+
+    @Test
+    public void formatOperatorPrecedence_4_W80() {
+        assertFormatEquals(80, 2, "SELECT 1 FROM TBL WHERE ( A = B AND C = D AND E = G) OR G = H");
+    }
+
+    @Test
+    public void formatOperatorPrecedence_4_W35() {
+        assertFormatEquals(35, 2, "SELECT 1\nFROM TBL\nWHERE ( A = B AND C = D AND E = G)\n  OR G = H");
+    }
+
+    @Test
     public void formatComplexQuery_W300() {
         assertFormatEquals(300, 2, "" +
                 "SELECT FIRMID, EVENTTIME_EVTDATE, EVENTTIME_EVTTIMESEC, NEWSCATEGORY, NEWSID, NEWSPAGE, NEWSSUBJECT, " +

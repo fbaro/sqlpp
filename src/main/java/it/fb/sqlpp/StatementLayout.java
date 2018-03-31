@@ -91,7 +91,7 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
             @Override
             protected NodeCode visitArithmeticBinary(ArithmeticBinaryExpression innerNode, ArithmeticParent context) {
                 if (!isCompatible(innerNode.getType(), context.type)) {
-                    return visitExpression(innerNode, context);
+                    return context.context.child(context.leftMost ? "(" : context.type.getValue() + "(", ")", toTree(innerNode));
                 }
                 process(innerNode.getLeft(), context);
                 process(innerNode.getRight(), new ArithmeticParent(innerNode.getType(), false, context.context));
@@ -111,6 +111,11 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
         innerVisitor.process(node.getLeft(), new ArithmeticParent(node.getType(), true, context));
         innerVisitor.process(node.getRight(), new ArithmeticParent(node.getType(), false, context));
         return context;
+    }
+
+    @Override
+    protected NodeCode visitNotExpression(NotExpression node, NodeCode context) {
+        return context.child("NOT (", ")", toTree(node.getValue()));
     }
 
     @Override
@@ -148,7 +153,7 @@ public final class StatementLayout extends DefaultTraversalVisitor<NodeCode, Nod
             @Override
             protected NodeCode visitLogicalBinaryExpression(LogicalBinaryExpression innerNode, NodeCode context) {
                 if (innerNode.getType() != node.getType()) {
-                    return visitExpression(innerNode, context);
+                    return context.child(++childCount == 1 ? "(" : node.getType().name() + "(", ")", toTree(innerNode));
                 }
                 process(innerNode.getLeft(), context);
                 process(innerNode.getRight(), context);
