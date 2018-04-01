@@ -37,12 +37,12 @@ public class StatementLayoutTest {
 
     @Test
     public void formatFullSelect_W80() {
-        assertFormatEquals(80, 2, "SELECT * FROM TBL WHERE A = B GROUP BY C HAVING D > 1 ORDER BY E");
+        assertFormatEquals(80, 2, "SELECT * FROM TBL WHERE A = B GROUP BY C, D HAVING D > 1 ORDER BY E");
     }
 
     @Test
     public void formatFullSelect_W15() {
-        assertFormatEquals(15, 2, "SELECT *\nFROM TBL\nWHERE A = B\nGROUP BY C\nHAVING D > 1\nORDER BY E");
+        assertFormatEquals(15, 2, "SELECT *\nFROM TBL\nWHERE A = B\nGROUP BY C, D\nHAVING D > 1\nORDER BY E");
     }
 
     @Test
@@ -408,6 +408,17 @@ public class StatementLayoutTest {
 
     @Test
     public void formatInsert_3_W30() {
+        assertFormatEquals(30, 2, "INSERT INTO TBL\nSELECT * FROM TBL");
+    }
+
+    @Test
+    public void formatDelete_W80() {
+        assertFormatEquals(80, 2, "DELETE FROM TBL WHERE A = B");
+    }
+
+    @Test
+    public void formatDelete_W25() {
+        assertFormatEquals(25, 2, "DELETE FROM TBL\nWHERE A = B");
     }
 
     @Test

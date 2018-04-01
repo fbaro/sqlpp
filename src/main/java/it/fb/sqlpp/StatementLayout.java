@@ -9,36 +9,41 @@ import com.google.common.base.Joiner;
 import java.util.List;
 import java.util.Optional;
 
-public final class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVisitor> {
+@SuppressWarnings("WeakerAccess")
+public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVisitor> {
 
     private static final StatementLayout INSTANCE = new StatementLayout();
 
-    @SuppressWarnings("WeakerAccess")
     public static String format(int lineWidth, int indentWidth, Statement statement) {
         return TreeLayout.format(lineWidth, indentWidth, INSTANCE.toTree(statement));
     }
 
-    @SuppressWarnings("WeakerAccess")
     public static String format(int lineWidth, int indentWidth, String statement) {
         Statement parsed = new SqlParser().createStatement(statement, new ParsingOptions());
         return format(lineWidth, indentWidth, parsed);
     }
 
-    private StatementLayout() {
+    protected StatementLayout() {
     }
 
-    private Tree toTree(Node node) {
+    protected Tree toTree(Node node) {
         return nc -> process(node, nc);
     }
 
-    private Tree toChildren(List<? extends Node> nodes, String opening, String joiner, String closing) {
-        return nc -> {
-            for (int i = 0; i < nodes.size(); i++) {
-                nc.child(i == 0 ? opening : "",
-                        i == nodes.size() - 1 ? closing : joiner,
-                        toTree(nodes.get(i)));
-            }
-        };
+    protected Tree toChildren(List<? extends Node> nodes, String opening, String joiner, String closing) {
+        if (nodes.isEmpty()) {
+            return nc -> {};
+        } else if (nodes.size() == 1) {
+            return nc -> nc.singleChild(opening, closing, toTree(nodes.get(0)));
+        } else {
+            return nc -> {
+                for (int i = 0; i < nodes.size(); i++) {
+                    nc.child(i == 0 ? opening : "",
+                            i == nodes.size() - 1 ? closing : joiner,
+                            toTree(nodes.get(i)));
+                }
+            };
+        }
     }
 
     @Override
@@ -263,6 +268,47 @@ public final class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, 
     }
 
     @Override
+    protected TreeVisitor visitExtract(Extract node, TreeVisitor context) {
+        return context.singleChild("EXTRACT(" + node.getField().name() + " FROM", ")",
+                toTree(node.getExpression()));
+    }
+
+    @Override
+    protected TreeVisitor visitNullIfExpression(NullIfExpression node, TreeVisitor context) {
+        return context.child("NULLIF(", ",", toTree(node.getFirst()))
+                .child("", ")", toTree(node.getSecond()));
+    }
+
+    @Override
+    protected TreeVisitor visitGroupBy(GroupBy node, TreeVisitor context) {
+        toChildren(node.getGroupingElements(), "", ",", "").accept(context);
+        return context;
+    }
+
+    @Override
+    protected TreeVisitor visitSimpleGroupBy(SimpleGroupBy node, TreeVisitor context) {
+        if (node.getColumnExpressions().size() != 1) {
+            throw new UnsupportedOperationException("Unsupported SimpleGroupBy with " + node.getColumnExpressions().size() + " expressions");
+        }
+        return process(node.getColumnExpressions().get(0), context);
+    }
+
+    @Override
+    protected TreeVisitor visitCube(Cube node, TreeVisitor context) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    protected TreeVisitor visitRollup(Rollup node, TreeVisitor context) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    protected TreeVisitor visitGroupingSets(GroupingSets node, TreeVisitor context) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     protected TreeVisitor visitOrderBy(OrderBy node, TreeVisitor context) {
         toChildren(node.getSortItems(), "", ",", "").accept(context);
         return context;
@@ -384,8 +430,22 @@ public final class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, 
     }
 
     @Override
+    protected TreeVisitor visitDelete(Delete node, TreeVisitor context) {
+        context.child("DELETE FROM", "", toTree(node.getTable()));
+        if (node.getWhere().isPresent()) {
+            context.child("WHERE", "", toTree(node.getWhere().get()));
+        }
+        return context;
+    }
+
+    @Override
     protected TreeVisitor visitTable(Table node, TreeVisitor context) {
         return context.leaf(toString(node.getName()));
+    }
+
+    @Override
+    protected TreeVisitor visitTableSubquery(TableSubquery node, TreeVisitor context) {
+        return context.singleChild("(", ")", toTree(node.getQuery()));
     }
 
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
@@ -436,6 +496,11 @@ public final class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, 
         innerVisitor.process(node.getLeft(), new JoinParent(node.getType(), node.getCriteria(), true, context));
         innerVisitor.process(node.getRight(), new JoinParent(node.getType(), node.getCriteria(), false, context));
         return context;
+    }
+
+    @Override
+    protected TreeVisitor visitCommit(Commit node, TreeVisitor context) {
+        return context.leaf("COMMIT");
     }
 
     private static String toString(QualifiedName qn) {
