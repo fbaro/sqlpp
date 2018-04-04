@@ -57,6 +57,11 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     }
 
     @Override
+    protected TreeVisitor visitParameter(Parameter node, TreeVisitor context) {
+        return context.leaf("?");
+    }
+
+    @Override
     protected TreeVisitor visitDereferenceExpression(DereferenceExpression node, TreeVisitor context) {
         //TODO: Che roba e'??
         return context.child("", "." + node.getField().getValue(), toTree(node.getBase()));
@@ -104,7 +109,7 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
             @Override
             protected TreeVisitor visitArithmeticBinary(ArithmeticBinaryExpression innerNode, ArithmeticParent context) {
                 if (!isCompatible(innerNode.getType(), context.type)) {
-                    return context.context.child(context.leftMost ? "(" : context.type.getValue() + "(", ")", toTree(innerNode));
+                    return context.context.child(context.leftMost ? "(" : context.type.getValue() + " (", ")", toTree(innerNode));
                 }
                 process(innerNode.getLeft(), context);
                 process(innerNode.getRight(), new ArithmeticParent(innerNode.getType(), false, context.context));
@@ -150,7 +155,7 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
 
     @Override
     protected TreeVisitor visitExists(ExistsPredicate node, TreeVisitor context) {
-        return context.child("EXISTS (", ")", toTree(node.getSubquery()));
+        return context.child("EXISTS", "", toTree(node.getSubquery()));
     }
 
     @Override
@@ -166,7 +171,7 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
             @Override
             protected TreeVisitor visitLogicalBinaryExpression(LogicalBinaryExpression innerNode, TreeVisitor context) {
                 if (innerNode.getType() != node.getType()) {
-                    return context.child(++childCount == 1 ? "(" : node.getType().name() + "(", ")", toTree(innerNode));
+                    return context.child(++childCount == 1 ? "(" : node.getType().name() + " (", ")", toTree(innerNode));
                 }
                 process(innerNode.getLeft(), context);
                 process(innerNode.getRight(), context);

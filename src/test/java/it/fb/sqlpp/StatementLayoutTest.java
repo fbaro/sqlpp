@@ -272,22 +272,22 @@ public class StatementLayoutTest {
 
     @Test
     public void formatOperatorPrecedence_1_W80() {
-        assertFormatEquals(80, 2, "SELECT X +( Y * Z) + K");
+        assertFormatEquals(80, 2, "SELECT X + ( Y * Z) + K");
     }
 
     @Test
     public void formatOperatorPrecedence_1_W20() {
-        assertFormatEquals(20, 2, "SELECT X\n    +( Y * Z)\n    + K");
+        assertFormatEquals(20, 2, "SELECT X\n    + ( Y * Z)\n    + K");
     }
 
     @Test
     public void formatOperatorPrecedence_2_W80() {
-        assertFormatEquals(80, 2, "SELECT ( X + Y) *( Z + K)");
+        assertFormatEquals(80, 2, "SELECT ( X + Y) * ( Z + K)");
     }
 
     @Test
     public void formatOperatorPrecedence_2_W20() {
-        assertFormatEquals(20, 2, "SELECT ( X + Y)\n    *( Z + K)");
+        assertFormatEquals(20, 2, "SELECT ( X + Y)\n    * ( Z + K)");
     }
 
     @Test
@@ -424,6 +424,97 @@ public class StatementLayoutTest {
     @Test
     public void formatInsert_3_W05() {
         assertFormatEquals(5, 2, "INSERT INTO TBL\nSELECT *\n  FROM TBL");
+    }
+
+    @Test
+    public void formatParentheses_W80() {
+        assertFormatEquals(80, 2, "SELECT 1 + ( 2 * ( 3 + ( 4 * ( 5 + 6)))) FROM DUAL");
+    }
+
+    @Test
+    public void magnumTest() {
+        assertFormatEquals(80, 2, "" +
+                "SELECT contr.isincode,\n" +
+                "  contr.INSTRUMENTFULLNAME,\n" +
+                "  contr2.currency1,\n" +
+                "  contr.pricemultiplier,\n" +
+                "  c.pricenotation,\n" +
+                "  c.qtynotation,\n" +
+                "  t.price,\n" +
+                "  t.qty,\n" +
+                "  t.CMN_PRICECURRENCY,\n" +
+                "  ft.LOTSIZE,\n" +
+                "  t.CMN_EVTTM_EVTDATE,\n" +
+                "  contr.DELIVERYTYPE,\n" +
+                "  contr.UNDERLYINGISINCODE,\n" +
+                "  contr.UNDERLYINGINDEXNAME,\n" +
+                "  contr.UNDERLYINGINDEXTERM,\n" +
+                "  t.Fees,\n" +
+                "  t.MktFees,\n" +
+                "  t.CMN_INSTRKEY_INTSECURITYTYPE AS ASSETCLASS,\n" +
+                "  t.CMN_INSTRKEY_MIC AS MIC,\n" +
+                "  t.CMN_INSTRKEY_STRIKEPRICESTR AS STRIKEPRICE,\n" +
+                "  t.CMN_CONTRACTID AS CONTRACTID\n" +
+                "FROM MDB_TRADE_EVENT AS t\n" +
+                "  INNER JOIN MDB_TRADE AS trade\n" +
+                "    ON trade.LASTFLOWID = t.CMN_FLOWID\n" +
+                "      AND trade.LASTFLOWEVENTKEY = t.CMN_FLOWEVENTKEY\n" +
+                "      AND t.TRADESTATUS = 0\n" +
+                "  INNER JOIN MDB_CONTRACT_INST_MIFID2 AS c\n" +
+                "    ON c.CONTRACTID = t.cmn_contractid\n" +
+                "      AND c.MIC = t.CMN_INSTRKEY_MIC\n" +
+                "      AND t.CMN_EVTTM_EVTDATE\n" +
+                "        BETWEEN c.MNGSD_VALIDITYFROM\n" +
+                "        AND c.MNGSD_VALIDITYTO - 1\n" +
+                "      AND c.MNG_DEL = 0\n" +
+                "      AND c.MNGSD_DELETED = 0\n" +
+                "  INNER JOIN FT_C_SECURITY AS ft\n" +
+                "    ON c.CONTRACTID = ft.FTPRODUCTID AND c.MIC = ft.MARKETID AND ft.DEL = 0\n" +
+                "  INNER JOIN MDB_MARKET AS m\n" +
+                "    ON m.MIC = t.cmn_instrkey_mic\n" +
+                "      AND m.mic\n" +
+                "        IN ( SELECT mic\n" +
+                "            FROM mdb_market AS m2\n" +
+                "            WHERE t.CMN_EVTTM_EVTDATE\n" +
+                "                BETWEEN m2.MNGSD_VALIDITYFROM\n" +
+                "                AND m2.MNGSD_VALIDITYTO - 1\n" +
+                "              AND m2.MktType = ?\n" +
+                "              AND EXISTS ( SELECT *\n" +
+                "                    FROM mdb_trade_event AS t2\n" +
+                "                    WHERE t2.TRADETYPE = 1\n" +
+                "                      AND t2.CMN_TRADINGCAPACITY = 0\n" +
+                "                      AND t.cmn_flowid = t2.cmn_flowid\n" +
+                "                      AND t.cmn_floweventkey = t2.cmn_floweventkey )\n" +
+                "              AND m2.LEI\n" +
+                "                IN ( SELECT LEI\n" +
+                "                    FROM MDB_ENTITY AS e\n" +
+                "                    WHERE e.EntityID IN ( ?, ? )\n" +
+                "                      AND e.mngsd_validityfrom <= ?\n" +
+                "                      AND e.mngsd_validityto > ? )\n" +
+                "              AND segmentMic = ? )\n" +
+                "      AND t.CMN_EVTTM_EVTDATE\n" +
+                "        BETWEEN m.MNGSD_VALIDITYFROM\n" +
+                "        AND m.MNGSD_VALIDITYTO - 1\n" +
+                "      AND m.MNGSD_DELETED = 0\n" +
+                "      AND m.MNG_DEL = 0\n" +
+                "  INNER JOIN MDB_CONTRACT_MIFID2 AS contr\n" +
+                "    ON c.CONTRACTID = contr.CONTRACTID\n" +
+                "      AND contr.MNG_DEL = 0\n" +
+                "      AND contr.MNGSD_DELETED = 0\n" +
+                "      AND t.CMN_EVTTM_EVTDATE\n" +
+                "        BETWEEN contr.MNGSD_VALIDITYFROM\n" +
+                "        AND contr.MNGSD_VALIDITYTO - 1\n" +
+                "  LEFT JOIN MDB_CONTRACT_MIFID2 AS contr2\n" +
+                "    ON contr2.ISINCODE = contr.UNDERLYINGISINCODE\n" +
+                "      AND c.MNG_DEL = 0\n" +
+                "      AND c.MNGSD_DELETED = 0\n" +
+                "      AND t.CMN_EVTTM_EVTDATE\n" +
+                "        BETWEEN contr2.MNGSD_VALIDITYFROM\n" +
+                "        AND contr2.MNGSD_VALIDITYTO - 1\n" +
+                "WHERE t.CMN_FIRMID IN ( ?, ? )\n" +
+                "  AND t.MNG_DEL = 0\n" +
+                "  AND t.CMN_EVTTM_EVTDATE BETWEEN ? AND ?\n" +
+                "ORDER BY t.CMN_CONTRACTID, t.CMN_EVTTM_EVTDATE");
     }
 
     private static void assertFormatEquals(int lineWidth, int indentWidth, String sql) {
