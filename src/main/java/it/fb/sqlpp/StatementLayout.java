@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 @SuppressWarnings("WeakerAccess")
-public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVisitor> {
+public class StatementLayout extends DefaultTraversalVisitor<Tree.Visitor, Tree.Visitor> {
 
     private static final StatementLayout INSTANCE = new StatementLayout();
 
@@ -47,33 +47,33 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     }
 
     @Override
-    protected TreeVisitor visitIdentifier(Identifier node, TreeVisitor context) {
+    protected Tree.Visitor visitIdentifier(Identifier node, Tree.Visitor context) {
         return context.leaf(node.getValue());
     }
 
     @Override
-    protected TreeVisitor visitSymbolReference(SymbolReference node, TreeVisitor context) {
+    protected Tree.Visitor visitSymbolReference(SymbolReference node, Tree.Visitor context) {
         return context.leaf(node.getName());
     }
 
     @Override
-    protected TreeVisitor visitParameter(Parameter node, TreeVisitor context) {
+    protected Tree.Visitor visitParameter(Parameter node, Tree.Visitor context) {
         return context.leaf("?");
     }
 
     @Override
-    protected TreeVisitor visitDereferenceExpression(DereferenceExpression node, TreeVisitor context) {
+    protected Tree.Visitor visitDereferenceExpression(DereferenceExpression node, Tree.Visitor context) {
         //TODO: Che roba e'??
         return context.child("", "." + node.getField().getValue(), toTree(node.getBase()));
     }
 
     @Override
-    protected TreeVisitor visitLiteral(Literal node, TreeVisitor context) {
+    protected Tree.Visitor visitLiteral(Literal node, Tree.Visitor context) {
         return context.leaf(ExpressionFormatter.formatExpression(node, Optional.empty()));
     }
 
     @Override
-    protected TreeVisitor visitComparisonExpression(ComparisonExpression node, TreeVisitor context) {
+    protected Tree.Visitor visitComparisonExpression(ComparisonExpression node, Tree.Visitor context) {
         return context.child("", "", toTree(node.getLeft()))
                 .child(node.getType().getValue(), "", toTree(node.getRight()));
     }
@@ -81,9 +81,9 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     private static final class ArithmeticParent {
         final ArithmeticBinaryExpression.Type type;
         final boolean leftMost;
-        final TreeVisitor context;
+        final Tree.Visitor context;
 
-        ArithmeticParent(ArithmeticBinaryExpression.Type type, boolean leftMost, TreeVisitor context) {
+        ArithmeticParent(ArithmeticBinaryExpression.Type type, boolean leftMost, Tree.Visitor context) {
             this.type = type;
             this.leftMost = leftMost;
             this.context = context;
@@ -104,10 +104,10 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     }
 
     @Override
-    protected TreeVisitor visitArithmeticBinary(ArithmeticBinaryExpression node, TreeVisitor context) {
-        AstVisitor<TreeVisitor, ArithmeticParent> innerVisitor = new AstVisitor<TreeVisitor, ArithmeticParent>() {
+    protected Tree.Visitor visitArithmeticBinary(ArithmeticBinaryExpression node, Tree.Visitor context) {
+        AstVisitor<Tree.Visitor, ArithmeticParent> innerVisitor = new AstVisitor<Tree.Visitor, ArithmeticParent>() {
             @Override
-            protected TreeVisitor visitArithmeticBinary(ArithmeticBinaryExpression innerNode, ArithmeticParent context) {
+            protected Tree.Visitor visitArithmeticBinary(ArithmeticBinaryExpression innerNode, ArithmeticParent context) {
                 if (!isCompatible(innerNode.getType(), context.type)) {
                     return context.context.child(context.leftMost ? "(" : context.type.getValue() + " (", ")", toTree(innerNode));
                 }
@@ -117,12 +117,12 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
             }
 
             @Override
-            protected TreeVisitor visitExpression(Expression innerNode, ArithmeticParent context) {
+            protected Tree.Visitor visitExpression(Expression innerNode, ArithmeticParent context) {
                 return context.context.child(context.leftMost ? "" : context.type.getValue(), "", toTree(innerNode));
             }
 
             @Override
-            protected TreeVisitor visitNode(Node node, ArithmeticParent context) {
+            protected Tree.Visitor visitNode(Node node, ArithmeticParent context) {
                 throw new IllegalStateException("Did not expect node " + node);
             }
         };
@@ -132,44 +132,44 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     }
 
     @Override
-    protected TreeVisitor visitNotExpression(NotExpression node, TreeVisitor context) {
+    protected Tree.Visitor visitNotExpression(NotExpression node, Tree.Visitor context) {
         return context.child("NOT (", ")", toTree(node.getValue()));
     }
 
     @Override
-    protected TreeVisitor visitIsNullPredicate(IsNullPredicate node, TreeVisitor context) {
+    protected Tree.Visitor visitIsNullPredicate(IsNullPredicate node, Tree.Visitor context) {
         return context.child("", "IS NULL", toTree(node.getValue()));
     }
 
     @Override
-    protected TreeVisitor visitIsNotNullPredicate(IsNotNullPredicate node, TreeVisitor context) {
+    protected Tree.Visitor visitIsNotNullPredicate(IsNotNullPredicate node, Tree.Visitor context) {
         return context.child("", "IS NOT NULL", toTree(node.getValue()));
     }
 
     @Override
-    protected TreeVisitor visitBetweenPredicate(BetweenPredicate node, TreeVisitor context) {
+    protected Tree.Visitor visitBetweenPredicate(BetweenPredicate node, Tree.Visitor context) {
         return context.child("", "", toTree(node.getValue()))
                 .child("BETWEEN", "", toTree(node.getMin()))
                 .child("AND", "", toTree(node.getMax()));
     }
 
     @Override
-    protected TreeVisitor visitExists(ExistsPredicate node, TreeVisitor context) {
+    protected Tree.Visitor visitExists(ExistsPredicate node, Tree.Visitor context) {
         return context.child("EXISTS", "", toTree(node.getSubquery()));
     }
 
     @Override
-    protected TreeVisitor visitSubqueryExpression(SubqueryExpression node, TreeVisitor context) {
+    protected Tree.Visitor visitSubqueryExpression(SubqueryExpression node, Tree.Visitor context) {
         return context.child("(", " )", toTree(node.getQuery()));
     }
 
     @Override
-    protected TreeVisitor visitLogicalBinaryExpression(LogicalBinaryExpression node, TreeVisitor context) {
-        return new AstVisitor<TreeVisitor, TreeVisitor>() {
+    protected Tree.Visitor visitLogicalBinaryExpression(LogicalBinaryExpression node, Tree.Visitor context) {
+        return new AstVisitor<Tree.Visitor, Tree.Visitor>() {
             private int childCount = 0;
 
             @Override
-            protected TreeVisitor visitLogicalBinaryExpression(LogicalBinaryExpression innerNode, TreeVisitor context) {
+            protected Tree.Visitor visitLogicalBinaryExpression(LogicalBinaryExpression innerNode, Tree.Visitor context) {
                 if (innerNode.getType() != node.getType()) {
                     return context.child(++childCount == 1 ? "(" : node.getType().name() + " (", ")", toTree(innerNode));
                 }
@@ -179,25 +179,25 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
             }
 
             @Override
-            protected TreeVisitor visitExpression(Expression innerNode, TreeVisitor context) {
+            protected Tree.Visitor visitExpression(Expression innerNode, Tree.Visitor context) {
                 return context.child(++childCount == 1 ? "" : node.getType().name(), "", toTree(innerNode));
             }
 
             @Override
-            protected TreeVisitor visitIsNotNullPredicate(IsNotNullPredicate node, TreeVisitor context) {
+            protected Tree.Visitor visitIsNotNullPredicate(IsNotNullPredicate node, Tree.Visitor context) {
                 throw new IllegalStateException("Did not expect node " + node);
             }
         }.process(node, context);
     }
 
     @Override
-    protected TreeVisitor visitInPredicate(InPredicate node, TreeVisitor context) {
+    protected Tree.Visitor visitInPredicate(InPredicate node, Tree.Visitor context) {
         return context.child("", "", toTree(node.getValue()))
                 .child("IN", "", toTree(node.getValueList()));
     }
 
     @Override
-    protected TreeVisitor visitInListExpression(InListExpression node, TreeVisitor context) {
+    protected Tree.Visitor visitInListExpression(InListExpression node, Tree.Visitor context) {
         List<Expression> values = node.getValues();
         for (int i = 0, l = values.size(); i < l; i++) {
             Expression e = values.get(i);
@@ -207,7 +207,7 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     }
 
     @Override
-    protected TreeVisitor visitLikePredicate(LikePredicate node, TreeVisitor context) {
+    protected Tree.Visitor visitLikePredicate(LikePredicate node, Tree.Visitor context) {
         context.child("", "", toTree(node.getValue()))
                 .child("LIKE", "", toTree(node.getPattern()));
         if (node.getEscape() != null) {
@@ -217,13 +217,13 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     }
 
     @Override
-    protected TreeVisitor visitWhenClause(WhenClause node, TreeVisitor context) {
+    protected Tree.Visitor visitWhenClause(WhenClause node, Tree.Visitor context) {
         return context.child("", "", toTree(node.getOperand()))
                 .child("THEN", "", toTree(node.getResult()));
     }
 
     @Override
-    protected TreeVisitor visitSearchedCaseExpression(SearchedCaseExpression node, TreeVisitor context) {
+    protected Tree.Visitor visitSearchedCaseExpression(SearchedCaseExpression node, Tree.Visitor context) {
         List<WhenClause> whenClauses = node.getWhenClauses();
         for (int i = 0; i < whenClauses.size(); i++) {
             WhenClause wc = whenClauses.get(i);
@@ -236,7 +236,7 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     }
 
     @Override
-    protected TreeVisitor visitFunctionCall(FunctionCall node, TreeVisitor context) {
+    protected Tree.Visitor visitFunctionCall(FunctionCall node, Tree.Visitor context) {
         if (node.getFilter().isPresent() || node.getOrderBy().isPresent()) {
             throw new UnsupportedOperationException("TODO");
         }
@@ -262,7 +262,7 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     }
 
     @Override
-    public TreeVisitor visitWindow(Window node, TreeVisitor context) {
+    public Tree.Visitor visitWindow(Window node, Tree.Visitor context) {
         if (!node.getPartitionBy().isEmpty()) {
             context.child("PARTITION BY", "", toChildren(node.getPartitionBy(), "", ",", ""));
         }
@@ -273,25 +273,25 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     }
 
     @Override
-    protected TreeVisitor visitExtract(Extract node, TreeVisitor context) {
+    protected Tree.Visitor visitExtract(Extract node, Tree.Visitor context) {
         return context.singleChild("EXTRACT(" + node.getField().name() + " FROM", ")",
                 toTree(node.getExpression()));
     }
 
     @Override
-    protected TreeVisitor visitNullIfExpression(NullIfExpression node, TreeVisitor context) {
+    protected Tree.Visitor visitNullIfExpression(NullIfExpression node, Tree.Visitor context) {
         return context.child("NULLIF(", ",", toTree(node.getFirst()))
                 .child("", ")", toTree(node.getSecond()));
     }
 
     @Override
-    protected TreeVisitor visitGroupBy(GroupBy node, TreeVisitor context) {
+    protected Tree.Visitor visitGroupBy(GroupBy node, Tree.Visitor context) {
         toChildren(node.getGroupingElements(), "", ",", "").accept(context);
         return context;
     }
 
     @Override
-    protected TreeVisitor visitSimpleGroupBy(SimpleGroupBy node, TreeVisitor context) {
+    protected Tree.Visitor visitSimpleGroupBy(SimpleGroupBy node, Tree.Visitor context) {
         if (node.getColumnExpressions().size() != 1) {
             throw new UnsupportedOperationException("Unsupported SimpleGroupBy with " + node.getColumnExpressions().size() + " expressions");
         }
@@ -299,28 +299,28 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     }
 
     @Override
-    protected TreeVisitor visitCube(Cube node, TreeVisitor context) {
+    protected Tree.Visitor visitCube(Cube node, Tree.Visitor context) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    protected TreeVisitor visitRollup(Rollup node, TreeVisitor context) {
+    protected Tree.Visitor visitRollup(Rollup node, Tree.Visitor context) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    protected TreeVisitor visitGroupingSets(GroupingSets node, TreeVisitor context) {
+    protected Tree.Visitor visitGroupingSets(GroupingSets node, Tree.Visitor context) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    protected TreeVisitor visitOrderBy(OrderBy node, TreeVisitor context) {
+    protected Tree.Visitor visitOrderBy(OrderBy node, Tree.Visitor context) {
         toChildren(node.getSortItems(), "", ",", "").accept(context);
         return context;
     }
 
     @Override
-    protected TreeVisitor visitSortItem(SortItem node, TreeVisitor context) {
+    protected Tree.Visitor visitSortItem(SortItem node, Tree.Visitor context) {
         StringBuilder builder = new StringBuilder();
         switch (node.getOrdering()) {
             case ASCENDING:
@@ -349,7 +349,7 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     }
 
     @Override
-    protected TreeVisitor visitSelect(Select node, TreeVisitor context) {
+    protected Tree.Visitor visitSelect(Select node, Tree.Visitor context) {
         List<SelectItem> selectItems = node.getSelectItems();
         int l = selectItems.size();
         for (int i = 0; i < l; i++) {
@@ -360,32 +360,32 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     }
 
     @Override
-    protected TreeVisitor visitAllColumns(AllColumns node, TreeVisitor context) {
+    protected Tree.Visitor visitAllColumns(AllColumns node, Tree.Visitor context) {
         return context.leaf(node.getPrefix()
                 .map(qn -> toString(qn) + ".*")
                 .orElse("*"));
     }
 
     @Override
-    protected TreeVisitor visitSingleColumn(SingleColumn node, TreeVisitor context) {
+    protected Tree.Visitor visitSingleColumn(SingleColumn node, Tree.Visitor context) {
         return context.singleChild("",
                 node.getAlias().map(i -> " AS " + i.getValue()).orElse(""),
                 toTree(node.getExpression()));
     }
 
     @Override
-    protected TreeVisitor visitAliasedRelation(AliasedRelation node, TreeVisitor context) {
+    protected Tree.Visitor visitAliasedRelation(AliasedRelation node, Tree.Visitor context) {
         return context.child("", " AS " + node.getAlias().getValue(), toTree(node.getRelation()));
     }
 
     @Override
-    protected TreeVisitor visitRow(Row node, TreeVisitor context) {
+    protected Tree.Visitor visitRow(Row node, Tree.Visitor context) {
         toChildren(node.getItems(), "(", ",", ")").accept(context);
         return context;
     }
 
     @Override
-    protected TreeVisitor visitValues(Values node, TreeVisitor context) {
+    protected Tree.Visitor visitValues(Values node, Tree.Visitor context) {
         if (node.getRows().size() == 1) {
             return context.singleChild("VALUES", "", toTree(node.getRows().get(0)));
         } else {
@@ -394,7 +394,7 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     }
 
     @Override
-    protected TreeVisitor visitQuerySpecification(QuerySpecification node, TreeVisitor context) {
+    protected Tree.Visitor visitQuerySpecification(QuerySpecification node, Tree.Visitor context) {
         context.child("SELECT", "", toTree(node.getSelect()));
         if (node.getFrom().isPresent()) {
             context.child("FROM", "", toTree(node.getFrom().get()));
@@ -415,7 +415,7 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     }
 
     @Override
-    protected TreeVisitor visitQuery(Query node, TreeVisitor context) {
+    protected Tree.Visitor visitQuery(Query node, Tree.Visitor context) {
         if (!node.getWith().isPresent() && !node.getOrderBy().isPresent()
                 && !node.getLimit().isPresent()) {
             return context.singleChild("", "", toTree(node.getQueryBody()));
@@ -424,7 +424,7 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     }
 
     @Override
-    protected TreeVisitor visitInsert(Insert node, TreeVisitor context) {
+    protected Tree.Visitor visitInsert(Insert node, Tree.Visitor context) {
         if (node.getColumns().isPresent()) {
             context.child("INSERT INTO " + toString(node.getTarget()) + " (", ")",
                     toChildren(node.getColumns().get(), "", ",", ""));
@@ -435,7 +435,7 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     }
 
     @Override
-    protected TreeVisitor visitDelete(Delete node, TreeVisitor context) {
+    protected Tree.Visitor visitDelete(Delete node, Tree.Visitor context) {
         context.child("DELETE FROM", "", toTree(node.getTable()));
         if (node.getWhere().isPresent()) {
             context.child("WHERE", "", toTree(node.getWhere().get()));
@@ -444,12 +444,12 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     }
 
     @Override
-    protected TreeVisitor visitTable(Table node, TreeVisitor context) {
+    protected Tree.Visitor visitTable(Table node, Tree.Visitor context) {
         return context.leaf(toString(node.getName()));
     }
 
     @Override
-    protected TreeVisitor visitTableSubquery(TableSubquery node, TreeVisitor context) {
+    protected Tree.Visitor visitTableSubquery(TableSubquery node, Tree.Visitor context) {
         return context.singleChild("(", ")", toTree(node.getQuery()));
     }
 
@@ -458,9 +458,9 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
         final Join.Type type;
         final Optional<JoinCriteria> criteria;
         final boolean leftMost;
-        final TreeVisitor context;
+        final Tree.Visitor context;
 
-        JoinParent(Join.Type type, Optional<JoinCriteria> criteria, boolean leftMost, TreeVisitor context) {
+        JoinParent(Join.Type type, Optional<JoinCriteria> criteria, boolean leftMost, Tree.Visitor context) {
             this.type = type;
             this.criteria = criteria;
             this.leftMost = leftMost;
@@ -469,17 +469,17 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     }
 
     @Override
-    protected TreeVisitor visitJoin(Join node, TreeVisitor context) {
-        AstVisitor<TreeVisitor, JoinParent> innerVisitor = new AstVisitor<TreeVisitor, JoinParent>() {
+    protected Tree.Visitor visitJoin(Join node, Tree.Visitor context) {
+        AstVisitor<Tree.Visitor, JoinParent> innerVisitor = new AstVisitor<Tree.Visitor, JoinParent>() {
             @Override
-            protected TreeVisitor visitJoin(Join innerNode, JoinParent context) {
+            protected Tree.Visitor visitJoin(Join innerNode, JoinParent context) {
                 process(innerNode.getLeft(), context);
                 process(innerNode.getRight(), new JoinParent(innerNode.getType(), innerNode.getCriteria(), false, context.context));
                 return context.context;
             }
 
             @Override
-            protected TreeVisitor visitRelation(Relation innerNode, JoinParent context) {
+            protected Tree.Visitor visitRelation(Relation innerNode, JoinParent context) {
                 String preLabel = context.leftMost ? "" : StatementLayout.toString(context.type);
                 if (context.leftMost || !context.criteria.isPresent()) {
                     return context.context.child(preLabel, "", toTree(innerNode));
@@ -494,7 +494,7 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
             }
 
             @Override
-            protected TreeVisitor visitNode(Node innerNode, JoinParent context) {
+            protected Tree.Visitor visitNode(Node innerNode, JoinParent context) {
                 throw new IllegalStateException("Did not expect node " + innerNode);
             }
         };
@@ -504,7 +504,7 @@ public class StatementLayout extends DefaultTraversalVisitor<TreeVisitor, TreeVi
     }
 
     @Override
-    protected TreeVisitor visitCommit(Commit node, TreeVisitor context) {
+    protected Tree.Visitor visitCommit(Commit node, Tree.Visitor context) {
         return context.leaf("COMMIT");
     }
 

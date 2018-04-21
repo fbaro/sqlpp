@@ -55,7 +55,7 @@ public final class TreeLayout {
         }
     }
 
-    private final class StraightLayout implements TreeVisitor {
+    private final class StraightLayout implements Tree.Visitor {
         private StraightLayout() {
         }
 
@@ -76,13 +76,13 @@ public final class TreeLayout {
         }
 
         @Override
-        public TreeVisitor leaf(String text) throws ReformatException {
+        public Tree.Visitor leaf(String text) throws ReformatException {
             append(text, true);
             return this;
         }
 
         @Override
-        public TreeVisitor child(String preLabel, String postLabel, Tree subTree) throws ReformatException {
+        public Tree.Visitor child(String preLabel, String postLabel, Tree subTree) throws ReformatException {
             append(preLabel, true);
             subTree.accept(this);
             append(postLabel, false);
@@ -90,12 +90,12 @@ public final class TreeLayout {
         }
 
         @Override
-        public TreeVisitor singleChild(String preLabel, String postLabel, Tree subTree) {
+        public Tree.Visitor singleChild(String preLabel, String postLabel, Tree subTree) {
             return child(preLabel, postLabel, subTree);
         }
     }
 
-    private final class IndentingLayout implements TreeVisitor {
+    private final class IndentingLayout implements Tree.Visitor {
 
         private final int indentLevel;
         private int callCount = 0;
@@ -117,7 +117,7 @@ public final class TreeLayout {
         }
 
         @Override
-        public TreeVisitor leaf(String text) {
+        public Tree.Visitor leaf(String text) {
             if (++callCount > 1) {
                 newLine(indentLevel);
             }
@@ -126,7 +126,7 @@ public final class TreeLayout {
         }
 
         @Override
-        public TreeVisitor child(String preLabel, String postLabel, Tree subTree) {
+        public Tree.Visitor child(String preLabel, String postLabel, Tree subTree) {
             if (++callCount > 1) {
                 newLine(indentLevel);
             }
@@ -137,7 +137,7 @@ public final class TreeLayout {
         }
 
         @Override
-        public TreeVisitor singleChild(String preLabel, String postLabel, Tree subTree) {
+        public Tree.Visitor singleChild(String preLabel, String postLabel, Tree subTree) {
             if (++callCount > 1) {
                 throw new IllegalStateException("Should not have called other methods before singleChild");
             }
