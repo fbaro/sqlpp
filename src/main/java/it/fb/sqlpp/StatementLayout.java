@@ -274,8 +274,9 @@ public class StatementLayout extends DefaultTraversalVisitor<Tree.Visitor, Tree.
 
     @Override
     protected Tree.Visitor visitExtract(Extract node, Tree.Visitor context) {
-        return context.singleChild("EXTRACT(" + node.getField().name() + " FROM", ")",
+        context.singleChild("EXTRACT(" + node.getField().name() + " FROM", ")",
                 toTree(node.getExpression()));
+        return null;
     }
 
     @Override
@@ -368,9 +369,10 @@ public class StatementLayout extends DefaultTraversalVisitor<Tree.Visitor, Tree.
 
     @Override
     protected Tree.Visitor visitSingleColumn(SingleColumn node, Tree.Visitor context) {
-        return context.singleChild("",
+        context.singleChild("",
                 node.getAlias().map(i -> " AS " + i.getValue()).orElse(""),
                 toTree(node.getExpression()));
+        return null;
     }
 
     @Override
@@ -387,30 +389,21 @@ public class StatementLayout extends DefaultTraversalVisitor<Tree.Visitor, Tree.
     @Override
     protected Tree.Visitor visitValues(Values node, Tree.Visitor context) {
         if (node.getRows().size() == 1) {
-            return context.singleChild("VALUES", "", toTree(node.getRows().get(0)));
+            context.singleChild("VALUES", "", toTree(node.getRows().get(0)));
         } else {
-            return context.singleChild("VALUES (", ")", toChildren(node.getRows(), "", ",", ""));
+            context.singleChild("VALUES (", ")", toChildren(node.getRows(), "", ",", ""));
         }
+        return null;
     }
 
     @Override
     protected Tree.Visitor visitQuerySpecification(QuerySpecification node, Tree.Visitor context) {
         context.child("SELECT", "", toTree(node.getSelect()));
-        if (node.getFrom().isPresent()) {
-            context.child("FROM", "", toTree(node.getFrom().get()));
-        }
-        if (node.getWhere().isPresent()) {
-            context.child("WHERE", "", toTree(node.getWhere().get()));
-        }
-        if (node.getGroupBy().isPresent()) {
-            context.child("GROUP BY", "", toTree(node.getGroupBy().get()));
-        }
-        if (node.getHaving().isPresent()) {
-            context.child("HAVING", "", toTree(node.getHaving().get()));
-        }
-        if (node.getOrderBy().isPresent()) {
-            context.child("ORDER BY", "", toTree(node.getOrderBy().get()));
-        }
+        node.getFrom().ifPresent(relation -> context.child("FROM", "", toTree(relation)));
+        node.getWhere().ifPresent(where -> context.child("WHERE", "", toTree(where)));
+        node.getGroupBy().ifPresent(groupBy -> context.child("GROUP BY", "", toTree(groupBy)));
+        node.getHaving().ifPresent(having -> context.child("HAVING", "", toTree(having)));
+        node.getOrderBy().ifPresent(orderBy -> context.child("ORDER BY", "", toTree(orderBy)));
         return context;
     }
 
@@ -418,7 +411,8 @@ public class StatementLayout extends DefaultTraversalVisitor<Tree.Visitor, Tree.
     protected Tree.Visitor visitQuery(Query node, Tree.Visitor context) {
         if (!node.getWith().isPresent() && !node.getOrderBy().isPresent()
                 && !node.getLimit().isPresent()) {
-            return context.singleChild("", "", toTree(node.getQueryBody()));
+            context.singleChild("", "", toTree(node.getQueryBody()));
+            return null;
         }
         throw new UnsupportedOperationException("TODO");
     }
@@ -450,7 +444,8 @@ public class StatementLayout extends DefaultTraversalVisitor<Tree.Visitor, Tree.
 
     @Override
     protected Tree.Visitor visitTableSubquery(TableSubquery node, Tree.Visitor context) {
-        return context.singleChild("(", ")", toTree(node.getQuery()));
+        context.singleChild("(", ")", toTree(node.getQuery()));
+        return null;
     }
 
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")

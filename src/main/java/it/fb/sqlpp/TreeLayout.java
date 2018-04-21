@@ -90,8 +90,8 @@ public final class TreeLayout {
         }
 
         @Override
-        public Tree.Visitor singleChild(String preLabel, String postLabel, Tree subTree) {
-            return child(preLabel, postLabel, subTree);
+        public void singleChild(String preLabel, String postLabel, Tree subTree) {
+            child(preLabel, postLabel, subTree);
         }
     }
 
@@ -137,14 +137,13 @@ public final class TreeLayout {
         }
 
         @Override
-        public Tree.Visitor singleChild(String preLabel, String postLabel, Tree subTree) {
+        public void singleChild(String preLabel, String postLabel, Tree subTree) {
             if (++callCount > 1) {
                 throw new IllegalStateException("Should not have called other methods before singleChild");
             }
             append(preLabel, true);
             format(subTree, indentLevel);
             append(postLabel, false);
-            return this;
         }
     }
 }
