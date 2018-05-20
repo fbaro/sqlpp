@@ -82,6 +82,7 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
             };
         }
     }
+
     protected Tree toChildren2(List<? extends ParserRuleContext> nodes, String joiner) {
         if (nodes.isEmpty()) {
             return nc -> {
@@ -124,9 +125,18 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
 
     @Override
     public Tree visitQueryNoWith(SqlBaseParser.QueryNoWithContext ctx) {
-        //Preconditions.checkArgument(ctx.sortItem().isEmpty()); // TODO
-        Preconditions.checkArgument(ctx.limit == null); // TODO
-        return nc -> nc.singleChild("", "", toTree(ctx.queryTerm()));
+        if (ctx.sortItem().isEmpty() && ctx.limit == null) {
+            return toTree(ctx.queryTerm());
+        }
+        return nc -> {
+            toTree(ctx.queryTerm()).accept(nc);
+            if (!ctx.sortItem().isEmpty()) {
+                nc.child("ORDER BY", "", toChildren2(ctx.sortItem(), ","));
+            }
+            if (ctx.limit != null) {
+                nc.child("LIMIT", "", nc2 -> nc2.leaf(ctx.limit.getText()));
+            }
+        };
     }
 
     @Override
@@ -250,7 +260,7 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     @Override
     public Tree visitGroupBy(SqlBaseParser.GroupByContext ctx) {
         Preconditions.checkArgument(ctx.setQuantifier() == null);
-        return toChildren(ctx.groupingElement(), "",",", "");
+        return toChildren(ctx.groupingElement(), "", ",", "");
     }
 
     @Override
@@ -260,7 +270,7 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
 
     @Override
     public Tree visitGroupingExpressions(SqlBaseParser.GroupingExpressionsContext ctx) {
-        return toChildren(ctx.expression(),  "",",", "");
+        return toChildren(ctx.expression(), "", ",", "");
     }
 
     @Override
@@ -271,5 +281,12 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     @Override
     public Tree visitNumericLiteral(SqlBaseParser.NumericLiteralContext ctx) {
         return nc -> nc.leaf(ctx.getText());
+    }
+
+    @Override
+    public Tree visitSortItem(SqlBaseParser.SortItemContext ctx) {
+        String pl = ctx.ordering == null ? "" : " " + ctx.ordering.getText();
+        String postLabel = ctx.nullOrdering == null ? pl : pl + " NULLS " + ctx.nullOrdering.getText();
+        return nc -> nc.singleChild("", postLabel, toTree(ctx.expression()));
     }
 }

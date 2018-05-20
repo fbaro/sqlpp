@@ -47,13 +47,13 @@ public class StatementLayoutTest {
     }
 
     @Test
-    public void formatFullSelect_W80() {
-        assertFormatEquals(80, 2, "SELECT * FROM TBL WHERE A = B GROUP BY C, D HAVING D > 1 ORDER BY E");
+    public void formatFullSelect_W90() {
+        assertFormatEquals(90, 2, "SELECT * FROM TBL WHERE A = B GROUP BY C, D HAVING D > 1 ORDER BY E DESC NULLS LAST");
     }
 
     @Test
     public void formatFullSelect_W15() {
-        assertFormatEquals(15, 2, "SELECT *\nFROM TBL\nWHERE A = B\nGROUP BY C, D\nHAVING D > 1\nORDER BY E");
+        assertFormatEquals(15, 2, "SELECT *\nFROM TBL\nWHERE A = B\nGROUP BY C, D\nHAVING D > 1\nORDER BY E DESC NULLS LAST");
     }
 
     @Test
@@ -525,7 +525,7 @@ public class StatementLayoutTest {
                 "WHERE t.CMN_FIRMID IN ( ?, ? )\n" +
                 "  AND t.MNG_DEL = 0\n" +
                 "  AND t.CMN_EVTTM_EVTDATE BETWEEN ? AND ?\n" +
-                "ORDER BY t.CMN_CONTRACTID, t.CMN_EVTTM_EVTDATE");
+                "ORDER BY t.CMN_CONTRACTID, t.CMN_EVTTM_EVTDATE DESC NULLS LAST");
     }
 
     private static void assertFormatEquals(int lineWidth, int indentWidth, String sql) {
