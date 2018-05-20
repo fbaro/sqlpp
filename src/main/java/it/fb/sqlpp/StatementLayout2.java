@@ -289,4 +289,30 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
         String postLabel = ctx.nullOrdering == null ? pl : pl + " NULLS " + ctx.nullOrdering.getText();
         return nc -> nc.singleChild("", postLabel, toTree(ctx.expression()));
     }
+
+    @Override
+    public Tree visitJoinRelation(SqlBaseParser.JoinRelationContext ctx) {
+        if (ctx.CROSS() != null) {
+            throw new UnsupportedOperationException("TODO");
+        } else if (ctx.NATURAL() != null) {
+            throw new UnsupportedOperationException("TODO");
+        } else {
+            return nc -> {
+                toTree(ctx.left).accept(nc);
+                nc.child(ctx.joinType().getText() + " JOIN", "", nc2 -> {
+                    toTree(ctx.rightRelation).accept(nc2);
+                    nc2.child("", "", toTree(ctx.joinCriteria()));
+                });
+            };
+        }
+    }
+
+    @Override
+    public Tree visitJoinCriteria(SqlBaseParser.JoinCriteriaContext ctx) {
+        if (ctx.ON() != null) {
+            return nc -> nc.singleChild("ON", "", toTree(ctx.booleanExpression()));
+        } else {
+            return nc -> nc.singleChild("USING", "", toChildren(ctx.identifier(), "(", ",", ")"));
+        }
+    }
 }
