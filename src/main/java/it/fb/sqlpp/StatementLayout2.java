@@ -141,6 +141,9 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
             if (!ctx.relation().isEmpty()) {
                 nc.child("FROM", "", toChildren2(ctx.relation(), ","));
             }
+            if (ctx.where != null) {
+                nc.child("WHERE", "", toTree(ctx.where));
+            }
         };
     }
 
@@ -181,5 +184,54 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     @Override
     public Tree visitTableName(SqlBaseParser.TableNameContext ctx) {
         return nc -> nc.leaf(ctx.qualifiedName().getText());
+    }
+
+    @Override
+    public Tree visitBooleanDefault(SqlBaseParser.BooleanDefaultContext ctx) {
+        return toTree(ctx.predicated());
+    }
+
+    @Override
+    public Tree visitPredicated(SqlBaseParser.PredicatedContext ctx) {
+        if (ctx.predicate() == null) {
+            throw new UnsupportedOperationException("TODO");
+        }
+        return toTree(ctx.predicate());
+    }
+
+    @Override
+    public Tree visitComparison(SqlBaseParser.ComparisonContext ctx) {
+        return nc -> nc.child("", "", toTree(ctx.value))
+                .child(ctx.comparisonOperator().getText(), "", toTree(ctx.right));
+    }
+
+    @Override
+    public Tree visitValueExpressionDefault(SqlBaseParser.ValueExpressionDefaultContext ctx) {
+        return toTree(ctx.primaryExpression());
+    }
+
+    @Override
+    public Tree visitColumnReference(SqlBaseParser.ColumnReferenceContext ctx) {
+        return toTree(ctx.identifier());
+    }
+
+    @Override
+    public Tree visitUnquotedIdentifier(SqlBaseParser.UnquotedIdentifierContext ctx) {
+        return nc -> nc.leaf(ctx.getText());
+    }
+
+    @Override
+    public Tree visitQuotedIdentifier(SqlBaseParser.QuotedIdentifierContext ctx) {
+        return nc -> nc.leaf(ctx.getText());
+    }
+
+    @Override
+    public Tree visitBackQuotedIdentifier(SqlBaseParser.BackQuotedIdentifierContext ctx) {
+        return nc -> nc.leaf(ctx.getText());
+    }
+
+    @Override
+    public Tree visitDigitIdentifier(SqlBaseParser.DigitIdentifierContext ctx) {
+        return nc -> nc.leaf(ctx.getText());
     }
 }
