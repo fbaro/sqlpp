@@ -42,6 +42,11 @@ public class StatementLayoutTest {
     }
 
     @Test
+    public void formatFullSelectNoOrderBy_W80() {
+        assertFormatEquals(80, 2, "SELECT * FROM TBL WHERE A = B GROUP BY C, D HAVING D > 1");
+    }
+
+    @Test
     public void formatFullSelect_W80() {
         assertFormatEquals(80, 2, "SELECT * FROM TBL WHERE A = B GROUP BY C, D HAVING D > 1 ORDER BY E");
     }
@@ -525,7 +530,7 @@ public class StatementLayoutTest {
 
     private static void assertFormatEquals(int lineWidth, int indentWidth, String sql) {
         //Statement statement = new SqlParser(new SqlParserOptions()).createStatement(sql, new ParsingOptions());
-        String formatted1 = StatementLayout2.format(lineWidth, indentWidth, sql);
+        String formatted1 = StatementLayout.format(lineWidth, indentWidth, sql);
         assertEquals(sql, formatted1);
         String formatted2 = StatementLayout2.format(lineWidth, indentWidth, sql);
         if (!sql.equals(formatted2)) {

@@ -100,6 +100,11 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     }
 
     @Override
+    protected Tree defaultResult() {
+        throw new UnsupportedOperationException("TODO");
+    }
+
+    @Override
     public Tree visitSingleStatement(SqlBaseParser.SingleStatementContext ctx) {
         return toTree(ctx.statement());
     }
@@ -119,7 +124,7 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
 
     @Override
     public Tree visitQueryNoWith(SqlBaseParser.QueryNoWithContext ctx) {
-        Preconditions.checkArgument(ctx.sortItem().isEmpty()); // TODO
+        //Preconditions.checkArgument(ctx.sortItem().isEmpty()); // TODO
         Preconditions.checkArgument(ctx.limit == null); // TODO
         return nc -> nc.singleChild("", "", toTree(ctx.queryTerm()));
     }
@@ -143,6 +148,12 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
             }
             if (ctx.where != null) {
                 nc.child("WHERE", "", toTree(ctx.where));
+            }
+            if (ctx.groupBy() != null) {
+                nc.child("GROUP BY", "", toTree(ctx.groupBy()));
+            }
+            if (ctx.having != null) {
+                nc.child("HAVING", "", toTree(ctx.having));
             }
         };
     }
@@ -194,9 +205,10 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     @Override
     public Tree visitPredicated(SqlBaseParser.PredicatedContext ctx) {
         if (ctx.predicate() == null) {
-            throw new UnsupportedOperationException("TODO");
+            return toTree(ctx.valueExpression);
+        } else {
+            return toTree(ctx.predicate()); // The valueExpression is retrieved from within the predicate
         }
-        return toTree(ctx.predicate());
     }
 
     @Override
@@ -232,6 +244,32 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
 
     @Override
     public Tree visitDigitIdentifier(SqlBaseParser.DigitIdentifierContext ctx) {
+        return nc -> nc.leaf(ctx.getText());
+    }
+
+    @Override
+    public Tree visitGroupBy(SqlBaseParser.GroupByContext ctx) {
+        Preconditions.checkArgument(ctx.setQuantifier() == null);
+        return toChildren(ctx.groupingElement(), "",",", "");
+    }
+
+    @Override
+    public Tree visitSingleGroupingSet(SqlBaseParser.SingleGroupingSetContext ctx) {
+        return toTree(ctx.groupingExpressions());
+    }
+
+    @Override
+    public Tree visitGroupingExpressions(SqlBaseParser.GroupingExpressionsContext ctx) {
+        return toChildren(ctx.expression(),  "",",", "");
+    }
+
+    @Override
+    public Tree visitExpression(SqlBaseParser.ExpressionContext ctx) {
+        return toTree(ctx.booleanExpression());
+    }
+
+    @Override
+    public Tree visitNumericLiteral(SqlBaseParser.NumericLiteralContext ctx) {
         return nc -> nc.leaf(ctx.getText());
     }
 }
