@@ -23,6 +23,11 @@ public class StatementLayout extends DefaultTraversalVisitor<Tree.Visitor, Tree.
         return format(lineWidth, indentWidth, parsed);
     }
 
+    static Tree toTree(String statement) {
+        Statement parsed = new SqlParser().createStatement(statement, new ParsingOptions());
+        return INSTANCE.toTree(parsed);
+    }
+
     protected StatementLayout() {
     }
 

@@ -1,9 +1,5 @@
 package it.fb.sqlpp;
 
-import com.facebook.presto.sql.parser.ParsingOptions;
-import com.facebook.presto.sql.parser.SqlParser;
-import com.facebook.presto.sql.parser.SqlParserOptions;
-import com.facebook.presto.sql.tree.Statement;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -23,6 +19,16 @@ public class StatementLayoutTest {
     @Test
     public void formatSimpleSelect_W15_4() {
         assertFormatEquals(15, 4, "SELECT *\nFROM TBL");
+    }
+
+    @Test
+    public void formatSimpleSelectTwoTables_W80() {
+        assertFormatEquals(80, 2, "SELECT * FROM TBL1 , TBL2");
+    }
+
+    @Test
+    public void formatSimpleSelectTwoTables_W20() {
+        assertFormatEquals(20, 2, "SELECT *\nFROM TBL1 , TBL2");
     }
 
     @Test
@@ -518,8 +524,15 @@ public class StatementLayoutTest {
     }
 
     private static void assertFormatEquals(int lineWidth, int indentWidth, String sql) {
-        Statement statement = new SqlParser(new SqlParserOptions()).createStatement(sql, new ParsingOptions());
-        String formatted = StatementLayout.format(lineWidth, indentWidth, statement);
-        assertEquals(sql, formatted);
+        //Statement statement = new SqlParser(new SqlParserOptions()).createStatement(sql, new ParsingOptions());
+        String formatted1 = StatementLayout2.format(lineWidth, indentWidth, sql);
+        assertEquals(sql, formatted1);
+        String formatted2 = StatementLayout2.format(lineWidth, indentWidth, sql);
+        if (!sql.equals(formatted2)) {
+            assertEquals(
+                    TreePrint.print(StatementLayout.toTree(sql)),
+                    TreePrint.print(StatementLayout2.toTree(sql)));
+        }
+        assertEquals(sql, formatted2);
     }
 }
