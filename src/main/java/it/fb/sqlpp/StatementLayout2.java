@@ -171,7 +171,7 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     @Override
     public Tree visitSelectAll(SqlBaseParser.SelectAllContext ctx) {
         if (ctx.qualifiedName() != null) {
-            throw new UnsupportedOperationException("TODO");
+            return nc -> nc.leaf(ctx.qualifiedName().getText() + ".*");
         }
         return nc -> nc.leaf("*");
     }
@@ -198,18 +198,16 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
 
     @Override
     public Tree visitAliasedRelation(SqlBaseParser.AliasedRelationContext ctx) {
-        Preconditions.checkArgument(ctx.identifier() == null); // TODO
-        return toTree(ctx.relationPrimary());
+        if (ctx.identifier() == null) {
+            return toTree(ctx.relationPrimary());
+        } else {
+            return nc -> nc.singleChild("", " AS " + ctx.identifier().getText(), toTree(ctx.relationPrimary()));
+        }
     }
 
     @Override
     public Tree visitTableName(SqlBaseParser.TableNameContext ctx) {
         return nc -> nc.leaf(ctx.qualifiedName().getText());
-    }
-
-    @Override
-    public Tree visitBooleanDefault(SqlBaseParser.BooleanDefaultContext ctx) {
-        return toTree(ctx.predicated());
     }
 
     @Override
@@ -229,7 +227,7 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
 
     @Override
     public Tree visitValueExpressionDefault(SqlBaseParser.ValueExpressionDefaultContext ctx) {
-        return toTree(ctx.primaryExpression());
+        return nc -> nc.singleChild("", "", toTree(ctx.primaryExpression()));
     }
 
     @Override
@@ -298,7 +296,7 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
             throw new UnsupportedOperationException("TODO");
         } else {
             return nc -> {
-                toTree(ctx.left).accept(nc);
+                toTree(ctx.left).accept(nc.safe());
                 nc.child(ctx.joinType().getText() + " JOIN", "", nc2 -> {
                     toTree(ctx.rightRelation).accept(nc2);
                     nc2.child("", "", toTree(ctx.joinCriteria()));
@@ -314,5 +312,76 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
         } else {
             return nc -> nc.singleChild("USING", "", toChildren(ctx.identifier(), "(", ",", ")"));
         }
+    }
+
+    @Override
+    public Tree visitLogicalBinary(SqlBaseParser.LogicalBinaryContext ctx) {
+        return nc -> {
+            toTree(ctx.left).accept(nc.safe());
+            nc.child(ctx.operator.getText(), "", toTree(ctx.right));
+        };
+    }
+
+    @Override
+    public Tree visitBooleanDefault(SqlBaseParser.BooleanDefaultContext ctx) {
+        return nc -> nc.child("", "", toTree(ctx.predicated()));
+    }
+
+    @Override
+    public Tree visitArithmeticBinary(SqlBaseParser.ArithmeticBinaryContext ctx) {
+        return nc -> {
+            toTree(ctx.left).accept(nc.safe());
+            nc.child(ctx.operator.getText(), "", toTree(ctx.right));
+        };
+    }
+
+    @Override
+    public Tree visitDereference(SqlBaseParser.DereferenceContext ctx) {
+        return nc -> nc.singleChild("", "." + ctx.identifier().getText(), toTree(ctx.primaryExpression()));
+    }
+
+    @Override
+    public Tree visitStringLiteral(SqlBaseParser.StringLiteralContext ctx) {
+        return nc -> nc.leaf(ctx.getText());
+    }
+
+    @Override
+    public Tree visitLike(SqlBaseParser.LikeContext ctx) {
+        return nc -> {
+            nc.child("", "", toTree(ctx.value));
+            nc.child("LIKE", "", toTree(ctx.pattern));
+            if (ctx.escape != null) {
+                nc.child("ESCAPE", "", toTree(ctx.escape));
+            }
+        };
+    }
+
+    @Override
+    public Tree visitInList(SqlBaseParser.InListContext ctx) {
+        return nc -> {
+            nc.child("", "", toTree(ctx.value));
+            toChildren(ctx.expression(), ctx.NOT() == null ? "IN (" : "NOT IN (",
+                    ",", " )").accept(nc);
+        };
+    }
+
+    @Override
+    public Tree visitSearchedCase(SqlBaseParser.SearchedCaseContext ctx) {
+        return nc -> {
+            List<SqlBaseParser.WhenClauseContext> whenClauses = ctx.whenClause();
+            for (int i = 0; i < whenClauses.size(); i++) {
+                nc.child(i == 0 ? "CASE WHEN" : "WHEN", "", toTree(whenClauses.get(i)));
+            }
+            if (ctx.elseExpression != null) {
+                nc.child("ELSE", "", toTree(ctx.elseExpression));
+            }
+            nc.leaf("END");
+        };
+    }
+
+    @Override
+    public Tree visitWhenClause(SqlBaseParser.WhenClauseContext ctx) {
+        return nc -> nc.child("", "", toTree(ctx.condition))
+                .child("THEN", "", toTree(ctx.result));
     }
 }
