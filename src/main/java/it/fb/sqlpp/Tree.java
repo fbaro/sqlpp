@@ -17,6 +17,59 @@ public interface Tree extends Consumer<Tree.Visitor> {
     @Override
     void accept(Visitor visitor);
 
+    default void appendTo(String preLabel, Visitor visitor) {
+        Tree.this.accept(new Visitor() {
+            boolean isFirst = true;
+            @Override
+            public Visitor leaf(String text) {
+                if (isFirst) {
+                    visitor.child(preLabel, "", inner -> inner.leaf(text));
+                } else {
+                    visitor.leaf(text);
+                }
+                isFirst = false;
+                return this;
+            }
+
+            @Override
+            public Visitor child(String _preLabel, String postLabel, Tree subTree) {
+                if (isFirst) {
+                    visitor.child(preLabel + " " + _preLabel, postLabel, subTree);
+                } else {
+                    visitor.child(_preLabel, postLabel, subTree);
+                }
+                isFirst = false;
+                return this;
+            }
+
+            @Override
+            public void singleChild(String _preLabel, String postLabel, Tree subTree) {
+                child(_preLabel, postLabel, subTree);
+            }
+        });
+    }
+
+    default void appendTo(Visitor visitor) {
+        Tree.this.accept(new Visitor() {
+            @Override
+            public Visitor leaf(String text) {
+                visitor.leaf(text);
+                return this;
+            }
+
+            @Override
+            public Visitor child(String preLabel, String postLabel, Tree subTree) {
+                visitor.child(preLabel, postLabel, subTree);
+                return this;
+            }
+
+            @Override
+            public void singleChild(String preLabel, String postLabel, Tree subTree) {
+                child(preLabel, postLabel, subTree);
+            }
+        });
+    }
+
     /**
      * A tree visitor. Fluent interface: where another method can be called, the method returns the receiver itself.
      */
@@ -47,26 +100,5 @@ public interface Tree extends Consumer<Tree.Visitor> {
          * @param subTree   The subtree
          */
         void singleChild(String preLabel, String postLabel, Tree subTree);
-
-        default Visitor safe() {
-            final Visitor _this = this;
-            return new Tree.Visitor() {
-
-                @Override
-                public Tree.Visitor leaf(String text) {
-                    return _this.leaf(text);
-                }
-
-                @Override
-                public Tree.Visitor child(String preLabel, String postLabel, Tree subTree) {
-                    return _this.child(preLabel, postLabel, subTree);
-                }
-
-                @Override
-                public void singleChild(String preLabel, String postLabel, Tree subTree) {
-                    _this.child(preLabel, postLabel, subTree);
-                }
-            };
-        }
     }
 }

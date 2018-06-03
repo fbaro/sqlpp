@@ -227,7 +227,7 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
 
     @Override
     public Tree visitValueExpressionDefault(SqlBaseParser.ValueExpressionDefaultContext ctx) {
-        return nc -> nc.singleChild("", "", toTree(ctx.primaryExpression()));
+        return toTree(ctx.primaryExpression());
     }
 
     @Override
@@ -296,7 +296,7 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
             throw new UnsupportedOperationException("TODO");
         } else {
             return nc -> {
-                toTree(ctx.left).accept(nc.safe());
+                toTree(ctx.left).appendTo(nc);
                 nc.child(ctx.joinType().getText() + " JOIN", "", nc2 -> {
                     toTree(ctx.rightRelation).accept(nc2);
                     nc2.child("", "", toTree(ctx.joinCriteria()));
@@ -317,20 +317,28 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     @Override
     public Tree visitLogicalBinary(SqlBaseParser.LogicalBinaryContext ctx) {
         return nc -> {
-            toTree(ctx.left).accept(nc.safe());
-            nc.child(ctx.operator.getText(), "", toTree(ctx.right));
+            if (ctx.left instanceof SqlBaseParser.LogicalBinaryContext) {
+                toTree(ctx.left).appendTo(nc);
+            } else {
+                nc.child("", "", toTree(ctx.left));
+            }
+            if (ctx.right instanceof SqlBaseParser.LogicalBinaryContext) {
+                toTree(ctx.right).appendTo(ctx.operator.getText(), nc);
+            } else {
+                nc.child(ctx.operator.getText(), "", toTree(ctx.right));
+            }
         };
     }
 
     @Override
     public Tree visitBooleanDefault(SqlBaseParser.BooleanDefaultContext ctx) {
-        return nc -> nc.child("", "", toTree(ctx.predicated()));
+        return toTree(ctx.predicated());
     }
 
     @Override
     public Tree visitArithmeticBinary(SqlBaseParser.ArithmeticBinaryContext ctx) {
         return nc -> {
-            toTree(ctx.left).accept(nc.safe());
+            toTree(ctx.left).appendTo(nc);
             nc.child(ctx.operator.getText(), "", toTree(ctx.right));
         };
     }
