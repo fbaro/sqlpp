@@ -368,8 +368,8 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     public Tree visitInList(SqlBaseParser.InListContext ctx) {
         return nc -> {
             nc.child("", "", toTree(ctx.value));
-            toChildren(ctx.expression(), ctx.NOT() == null ? "IN (" : "NOT IN (",
-                    ",", " )").accept(nc);
+            nc.child(ctx.NOT() == null ? "IN" : "NOT IN", "",
+                    toChildren(ctx.expression(), "(", ",", " )"));
         };
     }
 
@@ -391,5 +391,13 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     public Tree visitWhenClause(SqlBaseParser.WhenClauseContext ctx) {
         return nc -> nc.child("", "", toTree(ctx.condition))
                 .child("THEN", "", toTree(ctx.result));
+    }
+
+    @Override
+    public Tree visitFunctionCall(SqlBaseParser.FunctionCallContext ctx) {
+        if (ctx.filter() != null || !ctx.sortItem().isEmpty()) {
+            throw new UnsupportedOperationException("TODO");
+        }
+
     }
 }
