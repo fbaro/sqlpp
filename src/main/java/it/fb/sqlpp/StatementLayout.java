@@ -160,12 +160,14 @@ public class StatementLayout extends DefaultTraversalVisitor<Tree.Visitor, Tree.
 
     @Override
     protected Tree.Visitor visitExists(ExistsPredicate node, Tree.Visitor context) {
-        return context.child("EXISTS", "", toTree(node.getSubquery()));
+        context.singleChild("EXISTS", "", toTree(node.getSubquery()));
+        return context;
     }
 
     @Override
     protected Tree.Visitor visitSubqueryExpression(SubqueryExpression node, Tree.Visitor context) {
-        return context.child("(", " )", toTree(node.getQuery()));
+        context.singleChild("(", " )", toTree(node.getQuery()));
+        return context;
     }
 
     @Override

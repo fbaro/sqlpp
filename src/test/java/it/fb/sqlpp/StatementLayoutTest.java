@@ -283,12 +283,12 @@ public class StatementLayoutTest {
 
     @Test
     public void formatOperatorPrecedence_1_W80() {
-        assertFormatEquals(80, 2, "SELECT X + ( Y * Z) + K");
+        assertFormatEquals(80, 2, "SELECT X + ( Y * Z) + K, W");
     }
 
     @Test
     public void formatOperatorPrecedence_1_W20() {
-        assertFormatEquals(20, 2, "SELECT X\n    + ( Y * Z)\n    + K");
+        assertFormatEquals(20, 2, "SELECT X\n    + ( Y * Z)\n    + K,\n  W");
     }
 
     @Test
@@ -298,7 +298,7 @@ public class StatementLayoutTest {
 
     @Test
     public void formatOperatorPrecedence_2_W20() {
-        assertFormatEquals(20, 2, "SELECT ( X + Y)\n    * ( Z + K)");
+        assertFormatEquals(20, 2, "SELECT ( X + Y)\n    * ( Z + K),\n  W");
     }
 
     @Test
@@ -364,10 +364,10 @@ public class StatementLayoutTest {
         assertFormatEquals(80, 2, "" +
                 "SELECT FIRMID,\n" +
                 "  ( SELECT NI.ISINCODE\n" +
-                "      FROM MDB_NEWS_INSTRUMENT AS NI\n" +
-                "      WHERE NI.NEWSID = mdb_news.NEWSID\n" +
-                "        AND NI.FIRMID = mdb_news.FIRMID\n" +
-                "        AND rownum = 1 ) AS ISINCODE\n" +
+                "    FROM MDB_NEWS_INSTRUMENT AS NI\n" +
+                "    WHERE NI.NEWSID = mdb_news.NEWSID\n" +
+                "      AND NI.FIRMID = mdb_news.FIRMID\n" +
+                "      AND rownum = 1 ) AS ISINCODE\n" +
                 "FROM mdb_news");
     }
 
@@ -485,24 +485,24 @@ public class StatementLayoutTest {
                 "    ON m.MIC = t.cmn_instrkey_mic\n" +
                 "      AND m.mic\n" +
                 "        IN ( SELECT mic\n" +
-                "            FROM mdb_market AS m2\n" +
-                "            WHERE t.CMN_EVTTM_EVTDATE\n" +
-                "                BETWEEN m2.MNGSD_VALIDITYFROM\n" +
-                "                AND m2.MNGSD_VALIDITYTO - 1\n" +
-                "              AND m2.MktType = ?\n" +
-                "              AND EXISTS ( SELECT *\n" +
-                "                    FROM mdb_trade_event AS t2\n" +
-                "                    WHERE t2.TRADETYPE = 1\n" +
-                "                      AND t2.CMN_TRADINGCAPACITY = 0\n" +
-                "                      AND t.cmn_flowid = t2.cmn_flowid\n" +
-                "                      AND t.cmn_floweventkey = t2.cmn_floweventkey )\n" +
-                "              AND m2.LEI\n" +
-                "                IN ( SELECT LEI\n" +
-                "                    FROM MDB_ENTITY AS e\n" +
-                "                    WHERE e.EntityID IN ( ?, ? )\n" +
-                "                      AND e.mngsd_validityfrom <= ?\n" +
-                "                      AND e.mngsd_validityto > ? )\n" +
-                "              AND segmentMic = ? )\n" +
+                "          FROM mdb_market AS m2\n" +
+                "          WHERE t.CMN_EVTTM_EVTDATE\n" +
+                "              BETWEEN m2.MNGSD_VALIDITYFROM\n" +
+                "              AND m2.MNGSD_VALIDITYTO - 1\n" +
+                "            AND m2.MktType = ?\n" +
+                "            AND EXISTS ( SELECT *\n" +
+                "              FROM mdb_trade_event AS t2\n" +
+                "              WHERE t2.TRADETYPE = 1\n" +
+                "                AND t2.CMN_TRADINGCAPACITY = 0\n" +
+                "                AND t.cmn_flowid = t2.cmn_flowid\n" +
+                "                AND t.cmn_floweventkey = t2.cmn_floweventkey )\n" +
+                "            AND m2.LEI\n" +
+                "              IN ( SELECT LEI\n" +
+                "                FROM MDB_ENTITY AS e\n" +
+                "                WHERE e.EntityID IN ( ?, ? )\n" +
+                "                  AND e.mngsd_validityfrom <= ?\n" +
+                "                  AND e.mngsd_validityto > ? )\n" +
+                "            AND segmentMic = ? )\n" +
                 "      AND t.CMN_EVTTM_EVTDATE\n" +
                 "        BETWEEN m.MNGSD_VALIDITYFROM\n" +
                 "        AND m.MNGSD_VALIDITYTO - 1\n" +
@@ -534,9 +534,9 @@ public class StatementLayoutTest {
         assertEquals(sql, formatted1);
         String formatted2 = StatementLayout2.format(lineWidth, indentWidth, sql);
         if (!sql.equals(formatted2)) {
-            assertEquals(
-                    TreePrint.print(StatementLayout.toTree(sql)),
-                    TreePrint.print(StatementLayout2.toTree(sql)));
+//            assertEquals(
+//                    TreePrint.print(StatementLayout.toTree(sql)),
+//                    TreePrint.print(StatementLayout2.toTree(sql)));
         }
         assertEquals(sql, formatted2);
     }

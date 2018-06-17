@@ -131,7 +131,7 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
         return nc -> {
             toTree(ctx.queryTerm()).accept(nc);
             if (!ctx.sortItem().isEmpty()) {
-                nc.child("ORDER BY", "", toChildren2(ctx.sortItem(), ","));
+                nc.child("ORDER BY", "", toChildren(ctx.sortItem(), "", ",", ""));
             }
             if (ctx.limit != null) {
                 nc.child("LIMIT", "", nc2 -> nc2.leaf(ctx.limit.getText()));
@@ -443,5 +443,76 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
             return nc -> nc.singleChild(ctx.frameType.getText(), "", toChildren(ctx.frameBound(),
                     "BETWEEN", "AND", ""));
         }
+    }
+
+    @Override
+    public Tree visitParenthesizedExpression(SqlBaseParser.ParenthesizedExpressionContext ctx) {
+        return nc -> nc.singleChild("(", ")", toTree(ctx.expression()));
+    }
+
+    @Override
+    public Tree visitSubqueryExpression(SqlBaseParser.SubqueryExpressionContext ctx) {
+        return nc ->  nc.singleChild("(", " )", toTree(ctx.query()));
+    }
+
+    @Override
+    public Tree visitInsertInto(SqlBaseParser.InsertIntoContext ctx) {
+        return nc -> {
+            if (ctx.columnAliases() == null) {
+                nc.leaf("INSERT INTO " + ctx.qualifiedName().getText());
+            } else {
+                nc.child("INSERT INTO " + ctx.qualifiedName().getText() + " (", ")",
+                        toChildren(ctx.columnAliases().identifier(), "", ",", ""));
+            }
+            nc.child("", "", toTree(ctx.query()));
+        };
+    }
+
+    @Override
+    public Tree visitInlineTable(SqlBaseParser.InlineTableContext ctx) {
+        return nc -> nc.singleChild("VALUES", "", toChildren(ctx.expression(), "", ",", ""));
+    }
+
+    @Override
+    public Tree visitRowConstructor(SqlBaseParser.RowConstructorContext ctx) {
+        return toChildren(ctx.expression(), ctx.ROW() == null ? "(" : "ROW (", ",", ")");
+    }
+
+    @Override
+    public Tree visitDelete(SqlBaseParser.DeleteContext ctx) {
+        return nc -> {
+            nc.leaf("DELETE FROM " + ctx.qualifiedName().getText());
+            if (ctx.booleanExpression() != null) {
+                nc.child("WHERE", "", toTree(ctx.booleanExpression()));
+            }
+        };
+    }
+
+    @Override
+    public Tree visitBetween(SqlBaseParser.BetweenContext ctx) {
+        return nc -> {
+            nc.child("", "", toTree(ctx.value));
+            nc.child(ctx.NOT() == null ? "BETWEEN" : "NOT BETWEEN", "", toTree(ctx.valueExpression(0)));
+            nc.child("AND","", toTree(ctx.valueExpression(1)));
+        };
+    }
+
+    @Override
+    public Tree visitInSubquery(SqlBaseParser.InSubqueryContext ctx) {
+        return nc -> {
+            nc.child("", "", toTree(ctx.value));
+            nc.child(ctx.NOT() == null ? "IN (" : "NOT IN (", " )",
+                    toTree(ctx.query()));
+        };
+    }
+
+    @Override
+    public Tree visitParameter(SqlBaseParser.ParameterContext ctx) {
+        return nc -> nc.leaf("?");
+    }
+
+    @Override
+    public Tree visitExists(SqlBaseParser.ExistsContext ctx) {
+        return nc -> nc.singleChild("EXISTS (", " )", toTree(ctx.query()));
     }
 }
