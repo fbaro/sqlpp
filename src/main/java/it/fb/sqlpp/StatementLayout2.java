@@ -395,9 +395,53 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
 
     @Override
     public Tree visitFunctionCall(SqlBaseParser.FunctionCallContext ctx) {
-        if (ctx.filter() != null || !ctx.sortItem().isEmpty()) {
+        if (!ctx.sortItem().isEmpty()) {
             throw new UnsupportedOperationException("TODO");
         }
+        String opening = ctx.qualifiedName().getText() + "(";
+        if (ctx.over() == null) {
+            if (ctx.ASTERISK() != null) {
+                return nc -> nc.leaf(opening + "*)");
+            } else if (ctx.expression().isEmpty()) {
+                return nc -> nc.leaf(opening + ")");
+            } else {
+                return nc -> toChildren(ctx.expression(), opening, ",", ")")
+                        .appendTo(nc);
+            }
+        } else {
+            return nc -> {
+                if (ctx.ASTERISK() != null) {
+                    nc.leaf(opening + "*)");
+                } else if (ctx.expression().isEmpty()) {
+                    nc.leaf(opening + ")");
+                } else {
+                    nc.child(opening, ")", toChildren(ctx.expression(), "", ",", ""));
+                }
+                nc.child("OVER(", ")", toTree(ctx.over()));
+            };
+        }
+    }
 
+    @Override
+    public Tree visitOver(SqlBaseParser.OverContext ctx) {
+        return nc -> {
+            nc.child("PARTITION BY", "", toChildren(ctx.expression(), "", ",", ""));
+            if (!ctx.sortItem().isEmpty()) {
+                nc.child("ORDER BY", "", toChildren(ctx.sortItem(), "", ",", ""));
+            }
+            if (ctx.windowFrame() != null) {
+                toTree(ctx.windowFrame()).appendTo(nc);
+            }
+        };
+    }
+
+    @Override
+    public Tree visitWindowFrame(SqlBaseParser.WindowFrameContext ctx) {
+        if (ctx.BETWEEN() == null) {
+            return nc -> nc.singleChild(ctx.frameType.getText(), "", toTree(ctx.frameBound(0)));
+        } else {
+            return nc -> nc.singleChild(ctx.frameType.getText(), "", toChildren(ctx.frameBound(),
+                    "BETWEEN", "AND", ""));
+        }
     }
 }
