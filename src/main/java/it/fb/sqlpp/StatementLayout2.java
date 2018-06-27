@@ -515,4 +515,14 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     public Tree visitExists(SqlBaseParser.ExistsContext ctx) {
         return nc -> nc.singleChild("EXISTS (", " )", toTree(ctx.query()));
     }
+
+    @Override
+    public Tree visitNullPredicate(SqlBaseParser.NullPredicateContext ctx) {
+        return nc -> nc.singleChild("", ctx.NOT() == null ? " IS NULL" : " IS NOT NULL", toTree(ctx.value));
+    }
+
+    @Override
+    public Tree visitNullLiteral(SqlBaseParser.NullLiteralContext ctx) {
+        return nc -> nc.leaf("NULL");
+    }
 }

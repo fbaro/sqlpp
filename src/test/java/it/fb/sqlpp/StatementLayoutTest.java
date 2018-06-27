@@ -443,6 +443,23 @@ public class StatementLayoutTest {
     }
 
     @Test
+    public void formatIsNull_W80() {
+        assertFormatEquals(80, 2, "SELECT * FROM TBL WHERE COL1 IS NULL");
+        assertFormatEquals(80, 2, "SELECT * FROM TBL WHERE COL1 IS NOT NULL");
+    }
+
+    @Test
+    public void formatIsNull_W30() {
+        assertFormatEquals(30, 2, "SELECT *\nFROM TBL\nWHERE COL1 IS NULL");
+        assertFormatEquals(30, 2, "SELECT *\nFROM TBL\nWHERE COL1 IS NOT NULL");
+    }
+
+    @Test
+    public void formatLiterals_W80() {
+        assertFormatEquals(80, 2, "SELECT 'a', 1, NULL FROM TBL");
+    }
+
+    @Test
     public void magnumTest() {
         assertFormatEquals(80, 2, "" +
                 "SELECT contr.isincode,\n" +

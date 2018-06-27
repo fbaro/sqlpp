@@ -78,6 +78,11 @@ public class StatementLayout extends DefaultTraversalVisitor<Tree.Visitor, Tree.
     }
 
     @Override
+    protected Tree.Visitor visitNullLiteral(NullLiteral node, Tree.Visitor context) {
+        return context.leaf("NULL");
+    }
+
+    @Override
     protected Tree.Visitor visitComparisonExpression(ComparisonExpression node, Tree.Visitor context) {
         return context.child("", "", toTree(node.getLeft()))
                 .child(node.getType().getValue(), "", toTree(node.getRight()));
@@ -143,12 +148,12 @@ public class StatementLayout extends DefaultTraversalVisitor<Tree.Visitor, Tree.
 
     @Override
     protected Tree.Visitor visitIsNullPredicate(IsNullPredicate node, Tree.Visitor context) {
-        return context.child("", "IS NULL", toTree(node.getValue()));
+        return context.child("", " IS NULL", toTree(node.getValue()));
     }
 
     @Override
     protected Tree.Visitor visitIsNotNullPredicate(IsNotNullPredicate node, Tree.Visitor context) {
-        return context.child("", "IS NOT NULL", toTree(node.getValue()));
+        return context.child("", " IS NOT NULL", toTree(node.getValue()));
     }
 
     @Override
