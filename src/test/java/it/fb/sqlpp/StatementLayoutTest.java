@@ -541,6 +541,7 @@ public class StatementLayoutTest {
                 "        AND contr2.MNGSD_VALIDITYTO - 1\n" +
                 "WHERE t.CMN_FIRMID IN ( ?, ? )\n" +
                 "  AND t.MNG_DEL = 0\n" +
+                "  AND t.CMN_CLIENTID <> 'Test'\n" +
                 "  AND t.CMN_EVTTM_EVTDATE BETWEEN ? AND ?\n" +
                 "ORDER BY t.CMN_CONTRACTID, t.CMN_EVTTM_EVTDATE DESC NULLS LAST");
     }

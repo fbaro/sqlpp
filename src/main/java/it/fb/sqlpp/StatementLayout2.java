@@ -7,6 +7,8 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.RuleNode;
 
 import java.util.List;
 import java.util.Optional;
@@ -103,6 +105,16 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     @Override
     protected Tree defaultResult() {
         throw new UnsupportedOperationException("TODO");
+    }
+
+    @Override
+    public Tree visit(ParseTree tree) {
+        return super.visit(tree);
+    }
+
+    @Override
+    public Tree visitChildren(RuleNode node) {
+        return super.visitChildren(node);
     }
 
     @Override
@@ -223,6 +235,12 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     public Tree visitComparison(SqlBaseParser.ComparisonContext ctx) {
         return nc -> nc.child("", "", toTree(ctx.value))
                 .child(ctx.comparisonOperator().getText(), "", toTree(ctx.right));
+    }
+
+    @Override
+    public Tree visitQuantifiedComparison(SqlBaseParser.QuantifiedComparisonContext ctx) {
+        return nc -> nc.child("", "", toTree(ctx.value))
+                .child(ctx.comparisonOperator().getText() + ctx.comparisonQuantifier().getText() + " (", " )", toTree(ctx.query()));
     }
 
     @Override
@@ -452,7 +470,7 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
 
     @Override
     public Tree visitSubqueryExpression(SqlBaseParser.SubqueryExpressionContext ctx) {
-        return nc ->  nc.singleChild("(", " )", toTree(ctx.query()));
+        return nc -> nc.singleChild("(", " )", toTree(ctx.query()));
     }
 
     @Override
@@ -493,7 +511,7 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
         return nc -> {
             nc.child("", "", toTree(ctx.value));
             nc.child(ctx.NOT() == null ? "BETWEEN" : "NOT BETWEEN", "", toTree(ctx.valueExpression(0)));
-            nc.child("AND","", toTree(ctx.valueExpression(1)));
+            nc.child("AND", "", toTree(ctx.valueExpression(1)));
         };
     }
 
@@ -524,5 +542,132 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     @Override
     public Tree visitNullLiteral(SqlBaseParser.NullLiteralContext ctx) {
         return nc -> nc.leaf("NULL");
+    }
+
+    @Override
+    public Tree visitArithmeticUnary(SqlBaseParser.ArithmeticUnaryContext ctx) {
+        return nc -> nc.singleChild(ctx.operator.getText(), "", toTree(ctx.valueExpression()));
+    }
+
+    @Override
+    public Tree visitArrayConstructor(SqlBaseParser.ArrayConstructorContext ctx) {
+        return nc -> nc.singleChild("ARRAY [", " ]", toChildren(ctx.expression(), "", ",", ""));
+    }
+
+    @Override
+    public Tree visitAddColumn(SqlBaseParser.AddColumnContext ctx) {
+        return nc -> {
+            nc.child("ALTER TABLE ", "", toTree(ctx.qualifiedName()));
+            nc.child("ADD COLUMN", "", toTree(ctx.columnDefinition()));
+        };
+    }
+
+    @Override
+    public Tree visitAtTimeZone(SqlBaseParser.AtTimeZoneContext ctx) {
+        return nc -> {
+            nc.child("", "", toTree(ctx.valueExpression()));
+            nc.child("AT", "", toTree(ctx.timeZoneSpecifier()));
+        };
+    }
+
+    @Override
+    public Tree visitBaseType(SqlBaseParser.BaseTypeContext ctx) {
+        if (ctx.DOUBLE_PRECISION() != null) {
+            return nc -> nc.leaf(ctx.DOUBLE_PRECISION().getText());
+        } else if (ctx.TIME_WITH_TIME_ZONE() != null) {
+            return nc -> nc.leaf(ctx.TIME_WITH_TIME_ZONE().getText());
+        } else if (ctx.TIMESTAMP_WITH_TIME_ZONE() != null) {
+            return nc -> nc.leaf(ctx.TIMESTAMP_WITH_TIME_ZONE().getText());
+        } else if (ctx.identifier() != null) {
+            return ctx.identifier().accept(this);
+        } else {
+            throw new IllegalStateException("Unknown alternative");
+        }
+    }
+
+    @Override
+    public Tree visitBasicStringLiteral(SqlBaseParser.BasicStringLiteralContext ctx) {
+        return nc -> nc.leaf(ctx.STRING().getText());
+    }
+
+    @Override
+    public Tree visitBinaryLiteral(SqlBaseParser.BinaryLiteralContext ctx) {
+        return nc -> nc.leaf(ctx.BINARY_LITERAL().getText());
+    }
+
+    @Override
+    public Tree visitBooleanLiteral(SqlBaseParser.BooleanLiteralContext ctx) {
+        return ctx.booleanValue().accept(this);
+    }
+
+    @Override
+    public Tree visitBooleanValue(SqlBaseParser.BooleanValueContext ctx) {
+        if (ctx.TRUE() != null) {
+            return nc -> nc.leaf(ctx.TRUE().getText());
+        } else if (ctx.FALSE() != null) {
+            return nc -> nc.leaf(ctx.FALSE().getText());
+        } else {
+            throw new IllegalStateException("Unknown alternative");
+        }
+    }
+
+    @Override
+    public Tree visitBoundedFrame(SqlBaseParser.BoundedFrameContext ctx) {
+        return nc -> nc.singleChild("", ctx.boundType.getText(), toTree(ctx.expression()));
+    }
+
+    @Override
+    public Tree visitCall(SqlBaseParser.CallContext ctx) {
+        return nc -> nc.singleChild("CALL " + ctx.qualifiedName().getText(), "",
+                toChildren(ctx.callArgument(), "", ",", ""));
+    }
+
+    @Override
+    public Tree visitCast(SqlBaseParser.CastContext ctx) {
+        return nc -> nc
+                .child(ctx.CAST() != null ? "CAST (" : "TRY_CAST (", "", toTree(ctx.expression()))
+                .child("AS", " )", toTree(ctx.type()));
+    }
+
+    @Override
+    public Tree visitColumnAliases(SqlBaseParser.ColumnAliasesContext ctx) {
+        return toChildren(ctx.identifier(), "(", ",", " )");
+    }
+
+    @Override
+    public Tree visitColumnDefinition(SqlBaseParser.ColumnDefinitionContext ctx) {
+        return nc -> {
+            nc.child("", "", toTree(ctx.identifier()))
+                .child("", "", toTree(ctx.type()));
+            if (ctx.COMMENT() != null) {
+                nc.child("COMMENT", "", toTree(ctx.string()));
+            }
+        };
+    }
+
+    @Override
+    public Tree visitCommit(SqlBaseParser.CommitContext ctx) {
+        return nc -> nc.leaf("COMMIT");
+    }
+
+    @Override
+    public Tree visitComparisonOperator(SqlBaseParser.ComparisonOperatorContext ctx) {
+        throw new UnsupportedOperationException("Should be a prefix/suffix, not a tree");
+    }
+
+    @Override
+    public Tree visitComparisonQuantifier(SqlBaseParser.ComparisonQuantifierContext ctx) {
+        throw new UnsupportedOperationException("Should be a prefix/suffix, not a tree");
+    }
+
+    @Override
+    public Tree visitConcatenation(SqlBaseParser.ConcatenationContext ctx) {
+        return nc -> nc.child("", "", toTree(ctx.left))
+                .child("CONCAT", "", toTree(ctx.right));
+    }
+
+    @Override
+    public Tree visitCreateSchema(SqlBaseParser.CreateSchemaContext ctx) {
+        return super.visitCreateSchema(ctx);
     }
 }
