@@ -11,7 +11,6 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.RuleNode;
 
 import java.util.List;
-import java.util.Optional;
 
 @SuppressWarnings("WeakerAccess")
 public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
@@ -85,7 +84,7 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
         }
     }
 
-    protected Tree toChildren2(List<? extends ParserRuleContext> nodes, String joiner) {
+    protected Tree toChildren2(List<? extends ParserRuleContext> nodes, String opening, String joiner, String closing) {
         if (nodes.isEmpty()) {
             return nc -> {
             };
@@ -94,8 +93,8 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
         } else {
             return nc -> {
                 for (int i = 0; i < nodes.size(); i++) {
-                    nc.child(i == 0 ? "" : joiner,
-                            "",
+                    nc.child(i == 0 ? opening : joiner,
+                            closing,
                             toTree(nodes.get(i)));
                 }
             };
@@ -166,7 +165,7 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
         return nc -> {
             nc.child("SELECT", "", toChildren(ctx.selectItem(), "", ",", ""));
             if (!ctx.relation().isEmpty()) {
-                nc.child("FROM", "", toChildren2(ctx.relation(), ","));
+                nc.child("FROM", "", toChildren2(ctx.relation(), "", ",", ""));
             }
             if (ctx.where != null) {
                 nc.child("WHERE", "", toTree(ctx.where));
@@ -190,10 +189,11 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
 
     @Override
     public Tree visitSelectSingle(SqlBaseParser.SelectSingleContext ctx) {
+        if (ctx.identifier() == null) {
+            return ctx.expression().accept(this);
+        }
         return nc -> nc.singleChild("",
-                Optional.ofNullable(ctx.identifier())
-                        .map(v -> " AS " + v.getText())
-                        .orElse(""),
+                " AS " + ctx.identifier().getText(),
                 toTree(ctx.expression()));
     }
 
@@ -213,7 +213,7 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
         if (ctx.identifier() == null) {
             return toTree(ctx.relationPrimary());
         } else {
-            return nc -> nc.singleChild("", " AS " + ctx.identifier().getText(), toTree(ctx.relationPrimary()));
+            return nc -> nc.singleChild("", " " + ctx.identifier().getText(), toTree(ctx.relationPrimary()));
         }
     }
 
@@ -297,6 +297,21 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     @Override
     public Tree visitNumericLiteral(SqlBaseParser.NumericLiteralContext ctx) {
         return nc -> nc.leaf(ctx.getText());
+    }
+
+    @Override
+    public Tree visitDecimalLiteral(SqlBaseParser.DecimalLiteralContext ctx) {
+        return nc -> nc.leaf(ctx.DECIMAL_VALUE().getText());
+    }
+
+    @Override
+    public Tree visitDoubleLiteral(SqlBaseParser.DoubleLiteralContext ctx) {
+        return nc -> nc.leaf(ctx.DOUBLE_VALUE().getText());
+    }
+
+    @Override
+    public Tree visitIntegerLiteral(SqlBaseParser.IntegerLiteralContext ctx) {
+        return nc -> nc.leaf(ctx.INTEGER_VALUE().getText());
     }
 
     @Override
@@ -402,6 +417,22 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
                 nc.child("ELSE", "", toTree(ctx.elseExpression));
             }
             nc.leaf("END");
+        };
+    }
+
+    @Override
+    public Tree visitSimpleCase(SqlBaseParser.SimpleCaseContext ctx) {
+        return nc -> {
+            nc.child("CASE", "", toTree(ctx.valueExpression()));
+            if (ctx.ELSE() == null) {
+                nc.child("", "", toChildren2(ctx.whenClause(), "WHEN", "WHEN", " END"));
+            } else {
+                nc.child("", "", nc2 -> {
+                    Tree whenChildren = toChildren2(ctx.whenClause(), "WHEN", "WHEN", "");
+                    whenChildren.appendTo(nc2);
+                    nc2.child("ELSE", " END", toTree(ctx.elseExpression));
+                });
+            }
         };
     }
 
@@ -545,6 +576,27 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     }
 
     @Override
+    public Tree visitLogicalNot(SqlBaseParser.LogicalNotContext ctx) {
+        return nc -> nc.singleChild("NOT", "", toTree(ctx.booleanExpression()));
+    }
+
+    @Override
+    public Tree visitQualifiedName(SqlBaseParser.QualifiedNameContext ctx) {
+        return nc -> nc.leaf(ctx.getText());
+    }
+
+    @Override
+    public Tree visitParenthesizedRelation(SqlBaseParser.ParenthesizedRelationContext ctx) {
+        return nc -> nc.singleChild("(", " )", toTree(ctx.relation()));
+    }
+
+
+    @Override
+    public Tree visitSingleExpression(SqlBaseParser.SingleExpressionContext ctx) {
+        return super.visitSingleExpression(ctx);
+    }
+
+    @Override
     public Tree visitArithmeticUnary(SqlBaseParser.ArithmeticUnaryContext ctx) {
         return nc -> nc.singleChild(ctx.operator.getText(), "", toTree(ctx.valueExpression()));
     }
@@ -638,7 +690,7 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     public Tree visitColumnDefinition(SqlBaseParser.ColumnDefinitionContext ctx) {
         return nc -> {
             nc.child("", "", toTree(ctx.identifier()))
-                .child("", "", toTree(ctx.type()));
+                    .child("", "", toTree(ctx.type()));
             if (ctx.COMMENT() != null) {
                 nc.child("COMMENT", "", toTree(ctx.string()));
             }
@@ -668,6 +720,26 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
 
     @Override
     public Tree visitCreateSchema(SqlBaseParser.CreateSchemaContext ctx) {
-        return super.visitCreateSchema(ctx);
+        return nc -> {
+            nc.child("CREATE SCHEMA" + (ctx.IF() != null ? " IF NOT EXISTS" : ""), "",
+                    toTree(ctx.qualifiedName()));
+            if (ctx.WITH() != null) {
+                nc.child("WITH", "", toTree(ctx.properties()));
+            }
+        };
+    }
+
+    @Override
+    public Tree visitCreateTable(SqlBaseParser.CreateTableContext ctx) {
+        return nc -> {
+            nc.child("CREATE TABLE" + (ctx.IF() != null ? " IF NOT EXISTS" : "") + ctx.qualifiedName().getText(),
+                    "", toChildren(ctx.tableElement(), "(", ",", ")"));
+            if (ctx.COMMENT() != null) {
+                nc.child("COMMENT", "", toTree(ctx.string()));
+            }
+            if (ctx.WITH() != null) {
+                nc.child("WITH", "", toTree(ctx.properties()));
+            }
+        };
     }
 }

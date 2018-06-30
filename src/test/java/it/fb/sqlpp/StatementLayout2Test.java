@@ -4,7 +4,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
-public class StatementLayoutTest {
+public class StatementLayout2Test {
 
     @Test
     public void formatSimpleSelect_W80() {
@@ -168,17 +168,17 @@ public class StatementLayoutTest {
 
     @Test
     public void formatAliases_W80() {
-        assertFormatEquals(80, 2, "SELECT T.*, T.A FROM LONG_TABLE_1 AS T WHERE T.A = T.B");
+        assertFormatEquals(80, 2, "SELECT T.*, T.A FROM LONG_TABLE_1 T WHERE T.A = T.B");
     }
 
     @Test
     public void formatAliases_W40() {
-        assertFormatEquals(40, 2, "SELECT T.*, T.A\nFROM LONG_TABLE_1 AS T\nWHERE T.A = T.B");
+        assertFormatEquals(40, 2, "SELECT T.*, T.A\nFROM LONG_TABLE_1 T\nWHERE T.A = T.B");
     }
 
     @Test
     public void formatAliases_W20() {
-        assertFormatEquals(20, 2, "SELECT T.*, T.A\nFROM LONG_TABLE_1 AS T\nWHERE T.A = T.B");
+        assertFormatEquals(20, 2, "SELECT T.*, T.A\nFROM LONG_TABLE_1 T\nWHERE T.A = T.B");
     }
 
     @Test
@@ -234,6 +234,26 @@ public class StatementLayoutTest {
     @Test
     public void formatCase_W20() {
         assertFormatEquals(20, 2, "SELECT X,\n  CASE WHEN A = B\n      THEN 1\n    WHEN C = D\n      THEN 2\n    ELSE 3\n    END\nFROM TBL");
+    }
+
+    @Test
+    public void formatSimpleCase_W80() {
+        assertFormatEquals(80, 2, "SELECT X, CASE A WHEN B THEN 1 WHEN C THEN 2 ELSE 3 END FROM TBL");
+    }
+
+    @Test
+    public void formatSimpleCase_W60() {
+        assertFormatEquals(60, 2, "SELECT X, CASE A WHEN B THEN 1 WHEN C THEN 2 ELSE 3 END\nFROM TBL");
+    }
+
+    @Test
+    public void formatSimpleCase_W45() {
+        assertFormatEquals(45, 2, "SELECT X,\n  CASE A\n    WHEN B THEN 1 WHEN C THEN 2 ELSE 3 END\nFROM TBL");
+    }
+
+    @Test
+    public void formatSimpleCase_W25() {
+        assertFormatEquals(25, 2, "SELECT X,\n  CASE A\n    WHEN B THEN 1\n      WHEN C THEN 2\n      WHEN D THEN 3\n      ELSE 4 END\nFROM TBL");
     }
 
     @Test
@@ -325,7 +345,7 @@ public class StatementLayoutTest {
     public void formatComplexQuery_W300() {
         assertFormatEquals(300, 2, "" +
                 "SELECT FIRMID, EVENTTIME_EVTDATE, EVENTTIME_EVTTIMESEC, NEWSCATEGORY, NEWSID, NEWSPAGE, NEWSSUBJECT, " +
-                "( SELECT NI.ISINCODE FROM MDB_NEWS_INSTRUMENT AS NI WHERE NI.NEWSID = mdb_news.NEWSID AND NI.FIRMID = mdb_news.FIRMID AND rownum = 1 ) AS ISINCODE " +
+                "( SELECT NI.ISINCODE FROM MDB_NEWS_INSTRUMENT NI WHERE NI.NEWSID = mdb_news.NEWSID AND NI.FIRMID = mdb_news.FIRMID AND rownum = 1 ) AS ISINCODE " +
                 "FROM mdb_news");
     }
 
@@ -333,7 +353,7 @@ public class StatementLayoutTest {
     public void formatComplexQuery_W250() {
         assertFormatEquals(250, 2, "" +
                 "SELECT FIRMID, EVENTTIME_EVTDATE, EVENTTIME_EVTTIMESEC, NEWSCATEGORY, NEWSID, NEWSPAGE, NEWSSUBJECT, " +
-                "( SELECT NI.ISINCODE FROM MDB_NEWS_INSTRUMENT AS NI WHERE NI.NEWSID = mdb_news.NEWSID AND NI.FIRMID = mdb_news.FIRMID AND rownum = 1 ) AS ISINCODE\n" +
+                "( SELECT NI.ISINCODE FROM MDB_NEWS_INSTRUMENT NI WHERE NI.NEWSID = mdb_news.NEWSID AND NI.FIRMID = mdb_news.FIRMID AND rownum = 1 ) AS ISINCODE\n" +
                 "FROM mdb_news");
     }
 
@@ -341,7 +361,7 @@ public class StatementLayoutTest {
     public void formatComplexQuery_W200() {
         assertFormatEquals(200, 2, "" +
                 "SELECT FIRMID,\n  EVENTTIME_EVTDATE,\n  EVENTTIME_EVTTIMESEC,\n  NEWSCATEGORY,\n  NEWSID,\n  NEWSPAGE,\n  NEWSSUBJECT," +
-                "\n  ( SELECT NI.ISINCODE FROM MDB_NEWS_INSTRUMENT AS NI WHERE NI.NEWSID = mdb_news.NEWSID AND NI.FIRMID = mdb_news.FIRMID AND rownum = 1 ) AS ISINCODE\n" +
+                "\n  ( SELECT NI.ISINCODE FROM MDB_NEWS_INSTRUMENT NI WHERE NI.NEWSID = mdb_news.NEWSID AND NI.FIRMID = mdb_news.FIRMID AND rownum = 1 ) AS ISINCODE\n" +
                 "FROM mdb_news");
     }
 
@@ -355,7 +375,7 @@ public class StatementLayoutTest {
     public void formatComplexQuery_W140() {
         assertFormatEquals(140, 2, "" +
                 "SELECT FIRMID," +
-                "\n  ( SELECT NI.ISINCODE FROM MDB_NEWS_INSTRUMENT AS NI WHERE NI.NEWSID = mdb_news.NEWSID AND NI.FIRMID = mdb_news.FIRMID AND rownum = 1 ) AS ISINCODE\n" +
+                "\n  ( SELECT NI.ISINCODE FROM MDB_NEWS_INSTRUMENT NI WHERE NI.NEWSID = mdb_news.NEWSID AND NI.FIRMID = mdb_news.FIRMID AND rownum = 1 ) AS ISINCODE\n" +
                 "FROM mdb_news");
     }
 
@@ -364,7 +384,7 @@ public class StatementLayoutTest {
         assertFormatEquals(80, 2, "" +
                 "SELECT FIRMID,\n" +
                 "  ( SELECT NI.ISINCODE\n" +
-                "    FROM MDB_NEWS_INSTRUMENT AS NI\n" +
+                "    FROM MDB_NEWS_INSTRUMENT NI\n" +
                 "    WHERE NI.NEWSID = mdb_news.NEWSID\n" +
                 "      AND NI.FIRMID = mdb_news.FIRMID\n" +
                 "      AND rownum = 1 ) AS ISINCODE\n" +
@@ -483,12 +503,12 @@ public class StatementLayoutTest {
                 "  t.CMN_INSTRKEY_MIC AS MIC,\n" +
                 "  t.CMN_INSTRKEY_STRIKEPRICESTR AS STRIKEPRICE,\n" +
                 "  t.CMN_CONTRACTID AS CONTRACTID\n" +
-                "FROM MDB_TRADE_EVENT AS t\n" +
-                "  INNER JOIN MDB_TRADE AS trade\n" +
+                "FROM MDB_TRADE_EVENT t\n" +
+                "  INNER JOIN MDB_TRADE trade\n" +
                 "    ON trade.LASTFLOWID = t.CMN_FLOWID\n" +
                 "      AND trade.LASTFLOWEVENTKEY = t.CMN_FLOWEVENTKEY\n" +
                 "      AND t.TRADESTATUS = 0\n" +
-                "  INNER JOIN MDB_CONTRACT_INST_MIFID2 AS c\n" +
+                "  INNER JOIN MDB_CONTRACT_INST_MIFID2 c\n" +
                 "    ON c.CONTRACTID = t.cmn_contractid\n" +
                 "      AND c.MIC = t.CMN_INSTRKEY_MIC\n" +
                 "      AND t.CMN_EVTTM_EVTDATE\n" +
@@ -496,26 +516,26 @@ public class StatementLayoutTest {
                 "        AND c.MNGSD_VALIDITYTO - 1\n" +
                 "      AND c.MNG_DEL = 0\n" +
                 "      AND c.MNGSD_DELETED = 0\n" +
-                "  INNER JOIN FT_C_SECURITY AS ft\n" +
+                "  INNER JOIN FT_C_SECURITY ft\n" +
                 "    ON c.CONTRACTID = ft.FTPRODUCTID AND c.MIC = ft.MARKETID AND ft.DEL = 0\n" +
-                "  INNER JOIN MDB_MARKET AS m\n" +
+                "  INNER JOIN MDB_MARKET m\n" +
                 "    ON m.MIC = t.cmn_instrkey_mic\n" +
                 "      AND m.mic\n" +
                 "        IN ( SELECT mic\n" +
-                "          FROM mdb_market AS m2\n" +
+                "          FROM mdb_market m2\n" +
                 "          WHERE t.CMN_EVTTM_EVTDATE\n" +
                 "              BETWEEN m2.MNGSD_VALIDITYFROM\n" +
                 "              AND m2.MNGSD_VALIDITYTO - 1\n" +
                 "            AND m2.MktType = ?\n" +
                 "            AND EXISTS ( SELECT *\n" +
-                "              FROM mdb_trade_event AS t2\n" +
+                "              FROM mdb_trade_event t2\n" +
                 "              WHERE t2.TRADETYPE = 1\n" +
                 "                AND t2.CMN_TRADINGCAPACITY = 0\n" +
                 "                AND t.cmn_flowid = t2.cmn_flowid\n" +
                 "                AND t.cmn_floweventkey = t2.cmn_floweventkey )\n" +
                 "            AND m2.LEI\n" +
                 "              IN ( SELECT LEI\n" +
-                "                FROM MDB_ENTITY AS e\n" +
+                "                FROM MDB_ENTITY e\n" +
                 "                WHERE e.EntityID IN ( ?, ? )\n" +
                 "                  AND e.mngsd_validityfrom <= ?\n" +
                 "                  AND e.mngsd_validityto > ? )\n" +
@@ -525,14 +545,14 @@ public class StatementLayoutTest {
                 "        AND m.MNGSD_VALIDITYTO - 1\n" +
                 "      AND m.MNGSD_DELETED = 0\n" +
                 "      AND m.MNG_DEL = 0\n" +
-                "  INNER JOIN MDB_CONTRACT_MIFID2 AS contr\n" +
+                "  INNER JOIN MDB_CONTRACT_MIFID2 contr\n" +
                 "    ON c.CONTRACTID = contr.CONTRACTID\n" +
                 "      AND contr.MNG_DEL = 0\n" +
                 "      AND contr.MNGSD_DELETED = 0\n" +
                 "      AND t.CMN_EVTTM_EVTDATE\n" +
                 "        BETWEEN contr.MNGSD_VALIDITYFROM\n" +
                 "        AND contr.MNGSD_VALIDITYTO - 1\n" +
-                "  LEFT JOIN MDB_CONTRACT_MIFID2 AS contr2\n" +
+                "  LEFT JOIN MDB_CONTRACT_MIFID2 contr2\n" +
                 "    ON contr2.ISINCODE = contr.UNDERLYINGISINCODE\n" +
                 "      AND c.MNG_DEL = 0\n" +
                 "      AND c.MNGSD_DELETED = 0\n" +
@@ -547,14 +567,9 @@ public class StatementLayoutTest {
     }
 
     private static void assertFormatEquals(int lineWidth, int indentWidth, String sql) {
-        //Statement statement = new SqlParser(new SqlParserOptions()).createStatement(sql, new ParsingOptions());
-        String formatted1 = StatementLayout.format(lineWidth, indentWidth, sql);
-        assertEquals(sql, formatted1);
         String formatted2 = StatementLayout2.format(lineWidth, indentWidth, sql);
         if (!sql.equals(formatted2)) {
-//            assertEquals(
-//                    TreePrint.print(StatementLayout.toTree(sql)),
-//                    TreePrint.print(StatementLayout2.toTree(sql)));
+            System.out.println(TreePrint.print(StatementLayout2.toTree(sql)));
         }
         assertEquals(sql, formatted2);
     }
