@@ -247,13 +247,8 @@ public class StatementLayout2Test {
     }
 
     @Test
-    public void formatSimpleCase_W45() {
-        assertFormatEquals(45, 2, "SELECT X,\n  CASE A\n    WHEN B THEN 1 WHEN C THEN 2 ELSE 3 END\nFROM TBL");
-    }
-
-    @Test
     public void formatSimpleCase_W25() {
-        assertFormatEquals(25, 2, "SELECT X,\n  CASE A\n    WHEN B THEN 1\n      WHEN C THEN 2\n      WHEN D THEN 3\n      ELSE 4 END\nFROM TBL");
+        assertFormatEquals(25, 2, "SELECT X,\n  CASE A\n    WHEN B THEN 1\n    WHEN C THEN 2\n    WHEN D THEN 3\n    ELSE 4 END\nFROM TBL");
     }
 
     @Test

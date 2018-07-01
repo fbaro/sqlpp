@@ -422,18 +422,13 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
 
     @Override
     public Tree visitSimpleCase(SqlBaseParser.SimpleCaseContext ctx) {
-        return nc -> {
-            nc.child("CASE", "", toTree(ctx.valueExpression()));
-            if (ctx.ELSE() == null) {
-                nc.child("", "", toChildren2(ctx.whenClause(), "WHEN", "WHEN", " END"));
-            } else {
-                nc.child("", "", nc2 -> {
-                    Tree whenChildren = toChildren2(ctx.whenClause(), "WHEN", "WHEN", "");
-                    whenChildren.appendTo(nc2);
-                    nc2.child("ELSE", " END", toTree(ctx.elseExpression));
-                });
+        return nc -> nc.singleChild("CASE", " END", nc2 -> {
+            nc2.child("", "", toTree(ctx.valueExpression()));
+            toChildren2(ctx.whenClause(), "WHEN", "WHEN", "").appendTo(nc2);
+            if (ctx.ELSE() != null) {
+                nc2.child("ELSE", "", toTree(ctx.elseExpression));
             }
-        };
+        });
     }
 
     @Override
