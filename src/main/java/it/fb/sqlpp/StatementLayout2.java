@@ -2,9 +2,7 @@ package it.fb.sqlpp;
 
 import com.facebook.presto.sql.parser.*;
 import com.google.common.base.Preconditions;
-import org.antlr.v4.runtime.ANTLRInputStream;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -16,6 +14,12 @@ import java.util.List;
 public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
 
     private static final StatementLayout2 INSTANCE = new StatementLayout2();
+    public static final BaseErrorListener ERROR_LISTENER = new BaseErrorListener() {
+        @Override
+        public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e) {
+            throw new ParseException(String.format("Syntax error at %d:%d: %s", line, charPositionInLine, msg));
+        }
+    };
 
     public static String format(int lineWidth, int indentWidth, String statement) {
         SqlBaseParser.SingleStatementContext parsed = invokeParser(statement);
@@ -33,11 +37,11 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
             CommonTokenStream tokenStream = new CommonTokenStream(lexer);
             SqlBaseParser parser = new SqlBaseParser(tokenStream);
 
-//            lexer.removeErrorListeners(); // TODO
-//            lexer.addErrorListener(ERROR_LISTENER);
+            lexer.removeErrorListeners();
+            lexer.addErrorListener(ERROR_LISTENER);
 
-//            parser.removeErrorListeners();
-//            parser.addErrorListener(ERROR_LISTENER);
+            parser.removeErrorListeners();
+            parser.addErrorListener(ERROR_LISTENER);
 
             SqlBaseParser.SingleStatementContext tree;
             try {
@@ -64,7 +68,7 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     }
 
     protected Tree toTree(ParserRuleContext node) {
-        return node.accept(StatementLayout2.this);
+        return node.accept(this);
     }
 
     protected Tree toChildren(List<? extends ParserRuleContext> nodes, String opening, String joiner, String closing) {
@@ -129,9 +133,11 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     @Override
     public Tree visitQuery(SqlBaseParser.QueryContext ctx) {
         if (ctx.with() != null) {
-            throw new UnsupportedOperationException("TODO");
+            return nc -> nc.child("", "", toTree(ctx.with()))
+                    .child("", "", toTree(ctx.queryNoWith()));
+        } else {
+            return toTree(ctx.queryNoWith());
         }
-        return toTree(ctx.queryNoWith());
     }
 
     @Override
@@ -592,6 +598,33 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     }
 
     @Override
+    public Tree visitSubquery(SqlBaseParser.SubqueryContext ctx) {
+        return nc -> nc.singleChild("(", " )", toTree(ctx.queryNoWith()));
+    }
+
+    @Override
+    public Tree visitSubqueryRelation(SqlBaseParser.SubqueryRelationContext ctx) {
+        return nc -> nc.singleChild("(", " )", toTree(ctx.query()));
+    }
+
+    @Override
+    public Tree visitNamedQuery(SqlBaseParser.NamedQueryContext ctx) {
+        return nc -> {
+            if (ctx.columnAliases() != null) {
+                nc.child(ctx.identifier().getText(), "", toTree(ctx.columnAliases()));
+            } else {
+                nc.leaf(ctx.identifier().getText());
+            }
+            nc.child("(", " )", toTree(ctx.query()));
+        };
+    }
+
+    @Override
+    public Tree visitWith(SqlBaseParser.WithContext ctx) {
+        return toChildren(ctx.namedQuery(), ctx.RECURSIVE() == null ? "WITH" : "WITH RECURSIVE", ",", "");
+    }
+
+    @Override
     public Tree visitArithmeticUnary(SqlBaseParser.ArithmeticUnaryContext ctx) {
         return nc -> nc.singleChild(ctx.operator.getText(), "", toTree(ctx.valueExpression()));
     }
@@ -737,4 +770,5 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
             }
         };
     }
+
 }
