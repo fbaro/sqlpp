@@ -1,5 +1,7 @@
 package it.fb.sqlpp;
 
+import org.antlr.v4.runtime.atn.ParserATNSimulator;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -472,6 +474,16 @@ public class StatementLayout2Test {
     @Test
     public void formatLiterals_W80() {
         assertFormatEquals(80, 2, "SELECT 'a', 1, NULL FROM TBL");
+    }
+
+    @Test
+    public void formatMybatisParameter_W80() {
+        assertFormatEquals(80, 2, "SELECT ${xxx} FROM TBL WHERE A = #{param.a, jdbcType=VARCHAR}");
+    }
+
+    @Test
+    public void formatMybatisParameter_W40() {
+        assertFormatEquals(40, 2, "SELECT ${xxx}\nFROM TBL\nWHERE A = #{param.a, jdbcType=VARCHAR}");
     }
 
     @Test

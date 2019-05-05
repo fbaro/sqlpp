@@ -327,6 +327,7 @@ primaryExpression
     | EXTRACT '(' identifier FROM valueExpression ')'                                     #extract
     | '(' expression ')'                                                                  #parenthesizedExpression
     | GROUPING '(' (qualifiedName (',' qualifiedName)*)? ')'                              #groupingOperation
+    | MYBATIS_PARAMETER                                                                   #mybatisParameter
     ;
 
 string
@@ -712,6 +713,10 @@ ASTERISK: '*';
 SLASH: '/';
 PERCENT: '%';
 CONCAT: '||';
+
+MYBATIS_PARAMETER
+    : ('${' | '#{' ) ( ~[{}] )+ '}'
+    ;
 
 STRING
     : '\'' ( ~'\'' | '\'\'' )* '\''

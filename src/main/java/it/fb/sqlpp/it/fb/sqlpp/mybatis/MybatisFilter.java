@@ -7,9 +7,6 @@ import org.xml.sax.XMLReader;
 import org.xml.sax.ext.LexicalHandler;
 import org.xml.sax.helpers.XMLFilterImpl;
 
-import java.util.ArrayList;
-import java.util.List;
-
 class MybatisFilter extends XMLFilterImpl implements LexicalHandler {
 
     private final int lineWidth;
@@ -44,7 +41,7 @@ class MybatisFilter extends XMLFilterImpl implements LexicalHandler {
     public void endElement(String uri, String localName, String qName) throws SAXException {
         if (formatting) {
             try {
-                String formatted = format(toFormat.toString());
+                String formatted = StatementLayout2.format(lineWidth, indentWidth, toFormat.toString());
                 super.characters("\n".toCharArray(), 0, 1);
                 super.characters(formatted.toCharArray(), 0, formatted.length());
                 super.characters("\n    ".toCharArray(), 0, 5);
@@ -135,39 +132,5 @@ class MybatisFilter extends XMLFilterImpl implements LexicalHandler {
 
     private void startFormatting() {
         formatting = true;
-    }
-
-    private String format(String toFormat) {
-        List<String> parameters = new ArrayList<>(32);
-        StringBuilder safeString = new StringBuilder();
-        {
-            int lastParamEndIdx = 0;
-            int paramIdx;
-            // TODO: Pericoloso, non sto facendo parse dell'SQL
-            // TODO: Considerare anche i ${
-            while (-1 != (paramIdx = toFormat.indexOf("#{", lastParamEndIdx))) {
-                int closeParamIdx = toFormat.indexOf('}', paramIdx + 2);
-                if (closeParamIdx == -1) {
-                    throw new IllegalStateException("Unclosed parameter found");
-                }
-                safeString.append(toFormat, lastParamEndIdx, paramIdx);
-                safeString.append('?');
-                lastParamEndIdx = closeParamIdx + 1;
-                parameters.add(toFormat.substring(paramIdx, closeParamIdx + 1));
-            }
-            safeString.append(toFormat, lastParamEndIdx, toFormat.length());
-        }
-        String formattedString = StatementLayout2.format(lineWidth, indentWidth, safeString.toString());
-        StringBuilder expandedString = new StringBuilder();
-        for (int i = 0; i < formattedString.length(); i++) {
-            char ch = formattedString.charAt(i);
-            // TODO: Pericoloso, non sto facendo parse dell'SQL
-            if (ch == '?') {
-                expandedString.append(parameters.remove(0));
-            } else {
-                expandedString.append(ch);
-            }
-        }
-        return expandedString.toString();
     }
 }

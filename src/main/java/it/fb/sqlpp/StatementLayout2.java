@@ -320,6 +320,11 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     }
 
     @Override
+    public Tree visitMybatisParameter(SqlBaseParser.MybatisParameterContext ctx) {
+        return nc -> nc.leaf(ctx.MYBATIS_PARAMETER().getText());
+    }
+
+    @Override
     public Tree visitSortItem(SqlBaseParser.SortItemContext ctx) {
         String pl = ctx.ordering == null ? "" : " " + ctx.ordering.getText();
         String postLabel = ctx.nullOrdering == null ? pl : pl + " NULLS " + ctx.nullOrdering.getText();
