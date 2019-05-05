@@ -21,9 +21,6 @@ public class MybatisFormatter {
         SAXParserFactory spf = SAXParserFactory.newInstance();
         spf.setNamespaceAware(true);
         SAXParser saxParser = spf.newSAXParser();
-//        XMLReader xmlReader = saxParser.getXMLReader();
-//        xmlReader.setContentHandler(new CopyHandler());
-//        xmlReader.parse(new InputSource(input));
         CopyHandler handler = new CopyHandler(output);
         saxParser.setProperty("http://xml.org/sax/properties/lexical-handler", handler);
         try {
@@ -37,10 +34,11 @@ public class MybatisFormatter {
 
         private final XMLStreamWriter writer;
         private StringBuilder cdataBuffer = null;
+        private DelayedWriteCommand delayedElement;
 
         CopyHandler(OutputStream output) throws XMLStreamException {
             XMLOutputFactory outputFactory = XMLOutputFactory.newFactory();
-            writer = outputFactory.createXMLStreamWriter(output);
+            writer = outputFactory.createXMLStreamWriter(output, "UTF-8");
         }
 
         private void wrap(WriteCommand cmd) {
@@ -53,7 +51,7 @@ public class MybatisFormatter {
 
         @Override
         public void startDocument() {
-            wrap(writer::writeStartDocument);
+            wrap(() -> writer.writeStartDocument("UTF-8", "1.0"));
         }
 
         @Override
@@ -63,11 +61,13 @@ public class MybatisFormatter {
 
         @Override
         public void startElement(String uri, String localName, String qName, Attributes attributes) {
-            wrap(() -> {
+            flushDelayedElement();
+            // Delay writing the element until we know if it's empty or not
+            delayedElement = (XmlConsumer<String> tagWriter1, XmlBiConsumer<String, String> tagWriter2) -> {
                 if (Strings.isNullOrEmpty(uri)) {
-                    writer.writeStartElement(localName);
+                    tagWriter1.accept(localName);
                 } else {
-                    writer.writeStartElement(uri, localName);
+                    tagWriter2.accept(uri, localName);
                 }
                 for (int i = 0; i < attributes.getLength(); i++) {
                     String attrUri = attributes.getURI(i);
@@ -77,16 +77,29 @@ public class MybatisFormatter {
                         writer.writeAttribute(attrUri, attributes.getLocalName(i), attributes.getValue(i));
                     }
                 }
-            });
+            };
         }
 
         @Override
         public void endElement(String uri, String localName, String qName) {
-            wrap(writer::writeEndElement);
+            if (delayedElement != null) {
+                wrap(() -> delayedElement.run(writer::writeEmptyElement, writer::writeEmptyElement));
+                delayedElement = null;
+            } else {
+                wrap(writer::writeEndElement);
+            }
+        }
+
+        private void flushDelayedElement() {
+            if (delayedElement != null) {
+                wrap(() -> delayedElement.run(writer::writeStartElement, writer::writeStartElement));
+                delayedElement = null;
+            }
         }
 
         @Override
         public void characters(char[] ch, int start, int length) {
+            flushDelayedElement();
             if (cdataBuffer != null) {
                 cdataBuffer.append(ch, start, length);
             } else {
@@ -96,6 +109,7 @@ public class MybatisFormatter {
 
         @Override
         public void ignorableWhitespace(char[] ch, int start, int length) {
+            flushDelayedElement();
             if (cdataBuffer != null) {
                 cdataBuffer.append(ch, start, length);
             } else {
@@ -104,7 +118,8 @@ public class MybatisFormatter {
         }
 
         @Override
-        public void startCDATA() throws SAXException {
+        public void startCDATA() {
+            flushDelayedElement();
             if (cdataBuffer != null) {
                 throw new IllegalStateException();
             }
@@ -112,7 +127,8 @@ public class MybatisFormatter {
         }
 
         @Override
-        public void endCDATA() throws SAXException {
+        public void endCDATA() {
+            flushDelayedElement();
             if (cdataBuffer == null) {
                 throw new IllegalStateException();
             }
@@ -121,7 +137,7 @@ public class MybatisFormatter {
         }
 
         @Override
-        public void startDTD(String name, String publicId, String systemId) throws SAXException {
+        public void startDTD(String name, String publicId, String systemId) {
             wrap(() -> {
                 writer.writeCharacters("\n");
                 if (!Strings.isNullOrEmpty(publicId)) {
@@ -143,7 +159,23 @@ public class MybatisFormatter {
             void run() throws XMLStreamException;
         }
 
+        @FunctionalInterface
+        private interface DelayedWriteCommand {
+            void run(XmlConsumer<String> tagWriter1, XmlBiConsumer<String, String> tagWriter2) throws XMLStreamException;
+        }
+
+        @FunctionalInterface
+        private interface XmlConsumer<T> {
+            void accept(T value) throws XMLStreamException;
+        }
+
+        @FunctionalInterface
+        private interface XmlBiConsumer<S, T> {
+            void accept(S value1, T value2) throws XMLStreamException;
+        }
+
         private static final class RuntimeXMLStreamException extends RuntimeException {
+
             RuntimeXMLStreamException(XMLStreamException cause) {
                 super(cause);
             }
