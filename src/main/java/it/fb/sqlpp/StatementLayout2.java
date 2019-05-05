@@ -1,12 +1,12 @@
 package it.fb.sqlpp;
 
-import com.facebook.presto.sql.parser.*;
 import com.google.common.base.Preconditions;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.RuleNode;
+import it.fb.repack.com.facebook.presto.sql.parser.*;
 
 import java.util.List;
 
@@ -43,7 +43,6 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
             parser.removeErrorListeners();
             parser.addErrorListener(ERROR_LISTENER);
 
-            SqlBaseParser.SingleStatementContext tree;
             try {
                 // first, try parsing with potentially faster SLL mode
                 parser.getInterpreter().setPredictionMode(PredictionMode.SLL);
@@ -287,11 +286,11 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
 
     @Override
     public Tree visitSingleGroupingSet(SqlBaseParser.SingleGroupingSetContext ctx) {
-        return toTree(ctx.groupingExpressions());
+        return toTree(ctx.groupingSet());
     }
 
     @Override
-    public Tree visitGroupingExpressions(SqlBaseParser.GroupingExpressionsContext ctx) {
+    public Tree visitGroupingSet(SqlBaseParser.GroupingSetContext ctx) {
         return toChildren(ctx.expression(), "", ",", "");
     }
 
@@ -367,11 +366,6 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
                 nc.child(ctx.operator.getText(), "", toTree(ctx.right));
             }
         };
-    }
-
-    @Override
-    public Tree visitBooleanDefault(SqlBaseParser.BooleanDefaultContext ctx) {
-        return toTree(ctx.predicated());
     }
 
     @Override
@@ -589,12 +583,6 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     @Override
     public Tree visitParenthesizedRelation(SqlBaseParser.ParenthesizedRelationContext ctx) {
         return nc -> nc.singleChild("(", " )", toTree(ctx.relation()));
-    }
-
-
-    @Override
-    public Tree visitSingleExpression(SqlBaseParser.SingleExpressionContext ctx) {
-        return super.visitSingleExpression(ctx);
     }
 
     @Override
