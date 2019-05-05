@@ -7,15 +7,15 @@
         <result property="district" column="district"/>
     </resultMap>
     <select id="selectVillage" resultType="village" parameterType="int" resultMap="villageResult">
-        SELECT id, name, district from village WHERE id = #{id}
+SELECT id, name, district FROM village WHERE id = #{id}
     </select>
     <insert id="insertVillage" parameterType="village" keyProperty="id" useGeneratedKeys="true">
-        INSERT into village(name,district) VALUES(#{name}, #{district})
+INSERT INTO village ( name, district) VALUES ( #{name}, #{district})
     </insert>
     <update id="updateVillage" parameterType="village">
-        UPDATE village SET name=#{name}, district =#{district} WHERE id =#{id}
+UPDATE village SET name=#{name}, district =#{district} WHERE id =#{id}
     </update>
-    <delete id="deleteVillage" parameterType="int"><![CDATA[
-        DELETE FROM village WHERE id <= #{id}
-    ]]></delete>
+    <delete id="deleteVillage" parameterType="int">
+DELETE FROM village WHERE id &lt;= #{id}
+    </delete>
 </mapper>

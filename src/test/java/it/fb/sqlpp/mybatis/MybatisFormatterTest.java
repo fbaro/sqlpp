@@ -10,8 +10,10 @@ import javax.xml.stream.XMLStreamException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 public class MybatisFormatterTest {
 
@@ -19,10 +21,13 @@ public class MybatisFormatterTest {
     public void test() throws ParserConfigurationException, XMLStreamException, SAXException, IOException {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             try (InputStream input = MybatisFormatterTest.class.getResourceAsStream("/test.xml")) {
-                MybatisFormatter.run(input, out);
+                MybatisFormatter.format(input, out, 80, 4);
             }
             byte[] expected = Resources.toByteArray(Resources.getResource("test.xml"));
-            assertArrayEquals(expected, out.toByteArray());
+            if (!Arrays.equals(expected, out.toByteArray())) {
+                assertEquals(new String(expected), new String(out.toByteArray()));
+                assertArrayEquals(expected, out.toByteArray());
+            }
         }
     }
 

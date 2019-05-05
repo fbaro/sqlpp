@@ -2,8 +2,10 @@ package it.fb.sqlpp.it.fb.sqlpp.mybatis;
 
 import com.google.common.base.Strings;
 import org.xml.sax.Attributes;
+import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.ext.DefaultHandler2;
+import org.xml.sax.ext.LexicalHandler;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
@@ -17,14 +19,16 @@ import java.io.OutputStream;
 
 public class MybatisFormatter {
 
-    public static void run(InputStream input, OutputStream output) throws ParserConfigurationException, SAXException, IOException, XMLStreamException {
+    public static void format(InputStream input, OutputStream output, int lineWidth, int indentWidth) throws ParserConfigurationException, SAXException, IOException, XMLStreamException {
         SAXParserFactory spf = SAXParserFactory.newInstance();
         spf.setNamespaceAware(true);
         SAXParser saxParser = spf.newSAXParser();
+        MybatisFilter filter = new MybatisFilter(saxParser.getXMLReader(), lineWidth, indentWidth);
+        saxParser.setProperty("http://xml.org/sax/properties/lexical-handler", filter);
         CopyHandler handler = new CopyHandler(output);
-        saxParser.setProperty("http://xml.org/sax/properties/lexical-handler", handler);
+        filter.setContentHandler(handler);
         try {
-            saxParser.parse(input, handler);
+            filter.parse(new InputSource(input));
         } catch (CopyHandler.RuntimeXMLStreamException ex) {
             throw ex.getCause();
         }
