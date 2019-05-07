@@ -1,11 +1,13 @@
 package it.fb.sqlpp.it.fb.sqlpp.mybatis;
 
 import com.google.common.base.Strings;
+import com.sun.javafx.scene.control.behavior.OptionalBoolean;
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.ext.DefaultHandler2;
 import org.xml.sax.ext.LexicalHandler;
+import org.xml.sax.helpers.DefaultHandler;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
@@ -16,8 +18,39 @@ import javax.xml.stream.XMLStreamWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class MybatisFormatter {
+
+    public static boolean isMapperFile(Path path) {
+        if (!Files.isReadable(path) || !Files.isRegularFile(path)) {
+            return false;
+        }
+        SAXParserFactory spf = SAXParserFactory.newInstance();
+        spf.setNamespaceAware(true);
+        try {
+            AtomicReference<Boolean> isMybatis = new AtomicReference<>(null);
+            SAXParser saxParser = spf.newSAXParser();
+            try (InputStream in = Files.newInputStream(path)) {
+                saxParser.parse(in, new DefaultHandler() {
+                    @Override
+                    public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
+                        if (isMybatis.get() != null) {
+                            return;
+                        }
+                        isMybatis.set(localName.equals("mapper"));
+                    }
+                });
+            }
+            return Optional.ofNullable(isMybatis.get()).orElse(false);
+        } catch (ParserConfigurationException | SAXException | IOException e) {
+            return false;
+        }
+    }
 
     public static void format(InputStream input, OutputStream output, int lineWidth, int indentWidth) throws ParserConfigurationException, SAXException, IOException, XMLStreamException {
         SAXParserFactory spf = SAXParserFactory.newInstance();
