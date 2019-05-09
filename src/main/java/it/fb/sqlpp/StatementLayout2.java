@@ -106,7 +106,7 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
 
     @Override
     protected Tree defaultResult() {
-        throw new UnsupportedOperationException("TODO");
+        throw new ParseException("TODO");
     }
 
     @Override
@@ -334,9 +334,9 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     @Override
     public Tree visitJoinRelation(SqlBaseParser.JoinRelationContext ctx) {
         if (ctx.CROSS() != null) {
-            throw new UnsupportedOperationException("TODO");
+            throw new ParseException("TODO");
         } else if (ctx.NATURAL() != null) {
-            throw new UnsupportedOperationException("TODO");
+            throw new ParseException("TODO");
         } else {
             return nc -> {
                 toTree(ctx.left).appendTo(nc);
@@ -445,7 +445,7 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
     @Override
     public Tree visitFunctionCall(SqlBaseParser.FunctionCallContext ctx) {
         if (!ctx.sortItem().isEmpty()) {
-            throw new UnsupportedOperationException("TODO");
+            throw new ParseException("TODO");
         }
         String opening = ctx.qualifiedName().getText() + "(";
         if (ctx.over() == null) {

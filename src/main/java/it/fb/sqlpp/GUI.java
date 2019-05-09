@@ -1,6 +1,13 @@
 package it.fb.sqlpp;
 
 import it.fb.sqlpp.it.fb.sqlpp.mybatis.MybatisFormatter;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -10,17 +17,9 @@ import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
-import org.xml.sax.SAXException;
-
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLStreamException;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import org.xml.sax.SAXException;
 
 public class GUI extends Application {
 
@@ -115,11 +114,19 @@ public class GUI extends Application {
             alert.setHeaderText("Mybatis scanning completed");
             alert.setContentText(String.format("Formatted %d files", modified));
             alert.showAndWait();
-        } catch (IOException ex) {
+        } catch (IOException | RuntimeException ex) {
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Error");
             alert.setHeaderText("Error scanning directory");
-            alert.setContentText(ex.toString());
+            Throwable th = ex;
+            while (th != null) {
+                if (alert.getContentText() != null) {
+                    alert.setContentText(alert.getContentText() + "\n" + th.toString());
+                } else {
+                    alert.setContentText(th.toString());
+                }
+                th = th.getCause();
+            }
             alert.showAndWait();
         }
     }
@@ -133,6 +140,8 @@ public class GUI extends Application {
             } catch (ParserConfigurationException | XMLStreamException | SAXException e) {
                 Files.delete(tmpOutputPath);
                 return 0;
+            } catch (RuntimeException ex) {
+                throw new IllegalStateException("Error reading " + mapperPath, ex);
             }
             Files.move(tmpOutputPath, mapperPath, StandardCopyOption.REPLACE_EXISTING);
             return 1;

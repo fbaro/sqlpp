@@ -1,30 +1,40 @@
 package it.fb.sqlpp.it.fb.sqlpp.mybatis;
 
 import com.google.common.base.Strings;
-import com.sun.javafx.scene.control.behavior.OptionalBoolean;
-import org.xml.sax.Attributes;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
-import org.xml.sax.ext.DefaultHandler2;
-import org.xml.sax.ext.LexicalHandler;
-import org.xml.sax.helpers.DefaultHandler;
-
+import com.google.common.io.Resources;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.OpenOption;
-import java.nio.file.Path;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
+import org.xml.sax.Attributes;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
+import org.xml.sax.ext.DefaultHandler2;
+import org.xml.sax.ext.EntityResolver2;
+import org.xml.sax.helpers.DefaultHandler;
 
 public class MybatisFormatter {
+
+    private static final String MYBATIS_DTD_PUBLIC_ID = "-//mybatis.org//DTD Mapper 3.0//EN";
+    private static final EntityResolver2 RESOLVER = new DefaultHandler2() {
+        @Override
+        public InputSource resolveEntity(String name, String publicId, String baseURI, String systemId) throws SAXException, IOException {
+            if (MYBATIS_DTD_PUBLIC_ID.equals(publicId)) {
+                return new InputSource(Resources.asByteSource(Resources.getResource("mybatis-3-mapper.dtd")).openStream());
+            }
+            return super.resolveEntity(name, publicId, baseURI, systemId);
+        }
+    };
 
     public static boolean isMapperFile(Path path) {
         if (!Files.isReadable(path) || !Files.isRegularFile(path)) {
@@ -36,7 +46,9 @@ public class MybatisFormatter {
             AtomicReference<Boolean> isMybatis = new AtomicReference<>(null);
             SAXParser saxParser = spf.newSAXParser();
             try (InputStream in = Files.newInputStream(path)) {
-                saxParser.parse(in, new DefaultHandler() {
+                XMLReader reader = saxParser.getXMLReader();
+                reader.setEntityResolver(RESOLVER);
+                reader.setContentHandler(new DefaultHandler() {
                     @Override
                     public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
                         if (isMybatis.get() != null) {
@@ -45,6 +57,7 @@ public class MybatisFormatter {
                         isMybatis.set(localName.equals("mapper"));
                     }
                 });
+                reader.parse(new InputSource(in));
             }
             return Optional.ofNullable(isMybatis.get()).orElse(false);
         } catch (ParserConfigurationException | SAXException | IOException e) {
@@ -60,6 +73,7 @@ public class MybatisFormatter {
         saxParser.setProperty("http://xml.org/sax/properties/lexical-handler", filter);
         CopyHandler handler = new CopyHandler(output);
         filter.setContentHandler(handler);
+        filter.setEntityResolver(RESOLVER);
         try {
             filter.parse(new InputSource(input));
         } catch (CopyHandler.RuntimeXMLStreamException ex) {
@@ -193,21 +207,25 @@ public class MybatisFormatter {
 
         @FunctionalInterface
         private interface WriteCommand {
+
             void run() throws XMLStreamException;
         }
 
         @FunctionalInterface
         private interface DelayedWriteCommand {
+
             void run(XmlConsumer<String> tagWriter1, XmlBiConsumer<String, String> tagWriter2) throws XMLStreamException;
         }
 
         @FunctionalInterface
         private interface XmlConsumer<T> {
+
             void accept(T value) throws XMLStreamException;
         }
 
         @FunctionalInterface
         private interface XmlBiConsumer<S, T> {
+
             void accept(S value1, T value2) throws XMLStreamException;
         }
 
