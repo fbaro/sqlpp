@@ -21,6 +21,7 @@ import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.ext.DefaultHandler2;
 import org.xml.sax.ext.EntityResolver2;
+import org.xml.sax.helpers.AttributesImpl;
 import org.xml.sax.helpers.DefaultHandler;
 
 public class MybatisFormatter {
@@ -114,18 +115,20 @@ public class MybatisFormatter {
         public void startElement(String uri, String localName, String qName, Attributes attributes) {
             flushDelayedElement();
             // Delay writing the element until we know if it's empty or not
+            // Must copy the attributes: the parser could reuse the same instance
+            AttributesImpl fixedAttributes = new AttributesImpl(attributes);
             delayedElement = (XmlConsumer<String> tagWriter1, XmlBiConsumer<String, String> tagWriter2) -> {
                 if (Strings.isNullOrEmpty(uri)) {
                     tagWriter1.accept(localName);
                 } else {
                     tagWriter2.accept(uri, localName);
                 }
-                for (int i = 0; i < attributes.getLength(); i++) {
-                    String attrUri = attributes.getURI(i);
+                for (int i = 0; i < fixedAttributes.getLength(); i++) {
+                    String attrUri = fixedAttributes.getURI(i);
                     if (Strings.isNullOrEmpty(attrUri)) {
-                        writer.writeAttribute(attributes.getLocalName(i), attributes.getValue(i));
+                        writer.writeAttribute(fixedAttributes.getLocalName(i), fixedAttributes.getValue(i));
                     } else {
-                        writer.writeAttribute(attrUri, attributes.getLocalName(i), attributes.getValue(i));
+                        writer.writeAttribute(attrUri, fixedAttributes.getLocalName(i), fixedAttributes.getValue(i));
                     }
                 }
             };
@@ -150,6 +153,9 @@ public class MybatisFormatter {
 
         @Override
         public void characters(char[] ch, int start, int length) {
+            if (length == 0) {
+                return;
+            }
             flushDelayedElement();
             if (cdataBuffer != null) {
                 cdataBuffer.append(ch, start, length);

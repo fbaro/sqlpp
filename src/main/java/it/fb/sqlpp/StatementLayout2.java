@@ -764,4 +764,12 @@ public class StatementLayout2 extends SqlBaseBaseVisitor<Tree> {
         };
     }
 
+    @Override
+    public Tree visitSetOperation(SqlBaseParser.SetOperationContext ctx) {
+        return nc -> {
+            nc.child("", "", toTree(ctx.left));
+            nc.leaf(ctx.operator.getText() + (ctx.setQuantifier() == null ? "" : " " + ctx.setQuantifier().getText()));
+            nc.child("", "", toTree(ctx.right));
+        };
+    }
 }

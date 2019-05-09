@@ -73,6 +73,9 @@ class MybatisFilter extends XMLFilterImpl implements LexicalHandler {
 
     @Override
     public void characters(char[] ch, int start, int length) throws SAXException {
+        if (length == 0) {
+            return;
+        }
         if (formatting) {
             toFormat.append(ch, start, length);
         } else {

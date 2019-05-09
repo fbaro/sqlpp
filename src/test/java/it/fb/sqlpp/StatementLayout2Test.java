@@ -487,6 +487,21 @@ public class StatementLayout2Test {
     }
 
     @Test
+    public void formatUnion_W80() {
+        assertFormatEquals(80, 2, "SELECT 1 FROM DUAL UNION ALL SELECT 2 FROM DUAL");
+    }
+
+    @Test
+    public void formatUnion_W40() {
+        assertFormatEquals(40, 2, "SELECT 1 FROM DUAL\nUNION ALL\nSELECT 2 FROM DUAL");
+    }
+
+    @Test
+    public void formatUnion_W15() {
+        assertFormatEquals(15, 2, "SELECT 1\n  FROM DUAL\nUNION ALL\nSELECT 2\n  FROM DUAL");
+    }
+
+    @Test
     public void magnumTest() {
         assertFormatEquals(80, 2, "" +
                 "SELECT contr.isincode,\n" +
